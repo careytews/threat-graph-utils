@@ -1,0 +1,117 @@
+#!/usr/bin/env python
+
+# Displays ...
+
+# Runs GetElements to perform a query, and then uses Limit to restrict the
+# data set to 15.
+
+import requests
+import json
+import sys
+from gaffer import Gaffer
+
+query = {
+    "class": "uk.gov.gchq.gaffer.operation.OperationChain",
+    "operations": [
+        {
+            "class": "uk.gov.gchq.gaffer.operation.impl.get.GetAllElements",
+            "view": {
+                "entities": {
+                    "ip": {
+                        "excludeProperties" : [ "count", "time" ]
+                    }
+                }
+            }
+            
+        },
+        {
+            "class" : "uk.gov.gchq.gaffer.operation.impl.GetWalks",
+            "operations" : [
+                {
+                    "class" : "uk.gov.gchq.gaffer.operation.OperationChain",
+                    "operations" : [
+                        {
+                            "class" : "uk.gov.gchq.gaffer.operation.impl.get.GetElements",
+                            "includeIncomingOutGoing" : "OUTGOING",
+                            "view": {
+                                "edges": {
+                                    "ipflow": {
+                                        "excludeProperties" : [ "count", "time" ]
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "class" : "uk.gov.gchq.gaffer.operation.OperationChain",
+                    "operations" : [
+                        {
+                            "class" : "uk.gov.gchq.gaffer.operation.impl.get.GetElements",
+                            "includeIncomingOutGoing" : "INCOMING",
+                            "view": {
+                                "edges": {
+                                    "dns": {
+                                        "excludeProperties" : [ "count", "time" ]
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "class" : "uk.gov.gchq.gaffer.operation.OperationChain",
+                    "operations" : [
+                        {
+                            "class" : "uk.gov.gchq.gaffer.operation.impl.get.GetElements",
+                            "includeIncomingOutGoing" : "OUTGOING",
+                            "view": {
+                                "edges": {
+                                    "indomain": {
+                                        "excludeProperties" : [ "count", "time" ]
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "class" : "uk.gov.gchq.gaffer.operation.OperationChain",
+                    "operations" : [
+                        {
+                            "class" : "uk.gov.gchq.gaffer.operation.impl.get.GetElements",
+                            "includeIncomingOutGoing" : "OUTGOING",
+                            "view": {
+                                "edges": {
+                                    "reported": {
+                                        "excludeProperties" : [ "count", "time" ]
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                }
+            ],
+            "resultsLimit" : 1000000
+        }
+        
+  ]
+}
+
+g = Gaffer("https://analytics.trustnetworks.com/gaffer-threat")
+g.use_cert()
+
+url = "/rest/v2/graph/operations/execute"
+
+res = g.post(url, data=json.dumps(query))
+
+for v in res.json():
+    ent = v["entities"]
+    src = ent[0].keys()[0]
+    dest = ent[1].keys()[0]
+    host = ent[2].keys()[0]
+    domain = ent[3].keys()[0]
+    badness = ent[4].keys()[0]
+
+    print "%-15s %-15s %-18s %s" % (src, dest, domain[:18], badness[:22])
+

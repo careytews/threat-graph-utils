@@ -1,0 +1,163 @@
+#!/usr/bin/env python
+
+import apility
+import json
+import sys
+from gaffer import Gaffer
+import sets
+import os
+import time
+
+g = Gaffer("https://analytics.trustnetworks.com/gaffer-threat")
+g.use_cert()
+
+uuid = open("apility-uuid").read().lstrip().rstrip()
+
+query = {
+    "class": "uk.gov.gchq.gaffer.operation.OperationChain",
+    "operations": [
+        {
+            "class": "uk.gov.gchq.gaffer.operation.impl.get.GetAllElements",
+            "view": {
+                "entities": {
+                    "ip": {
+                        "excludeProperties" : [ "count", "time" ]
+                    }
+                }
+            }
+        }
+    ]
+}
+
+res = g.execute(query)
+ips = sets.Set([v["vertex"] for v in res])
+
+query = {
+    "class": "uk.gov.gchq.gaffer.operation.OperationChain",
+    "operations": [
+        {
+            "class": "uk.gov.gchq.gaffer.operation.impl.get.GetAllElements",
+            "view": {
+                "entities": {
+                    "ip": {
+                        "excludeProperties" : [ "count", "time" ]
+                    }
+                }
+            }
+            
+        },
+        {
+            "class" : "uk.gov.gchq.gaffer.operation.impl.GetWalks",
+            "operations" : [
+                {
+                    "class" : "uk.gov.gchq.gaffer.operation.OperationChain",
+                    "operations" : [
+                        {
+                            "class" : "uk.gov.gchq.gaffer.operation.impl.get.GetElements",
+                            "includeIncomingOutGoing" : "OUTGOING",
+                            "view": {
+                                "edges": {
+                                    "reported": {
+                                        "excludeProperties" : [ "count", "time" ]
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                }
+            ],
+            "resultsLimit" : 1000000
+        }
+    ]
+}
+
+res = g.execute(query)
+bad_ips = sets.Set([v["entities"][0].keys()[0] for v in res])
+
+ips = list(ips - bad_ips)
+
+print len(ips)
+
+def chunks(l, n):
+    n = max(1, n)
+    return (l[i:i+n] for i in xrange(0, len(l), n))
+
+a = apility.Apility(uuid)
+
+for chunk in chunks(ips, 50):
+    
+    try:
+        res = a.get_ip_reputation(chunk)
+
+    except Exception, e:
+        print e
+        time.sleep(5)
+        continue
+
+    rep = {}
+
+    for v in res:
+        ip = v["ip"]
+        blacks = v["blacklists"]
+        rep[ip] = blacks
+
+    print rep
+
+    elts = []
+
+    for v in rep:
+        for w in rep[v]:
+
+            elt = {
+ 	        "class": "uk.gov.gchq.gaffer.data.element.Edge",
+ 	        "properties": {
+                    "time": {
+                        "uk.gov.gchq.gaffer.time.RBMBackedTimestampSet": {
+                            "timeBucket": "MINUTE",
+                            "timestamps": [time.time()]
+                        }
+                    }
+                },
+ 	        "group": "reported",
+ 	        "source": v,
+ 	        "destination": "apility." + w,
+ 	        "directed": True
+ 	    }
+  
+            elts.append(elt)
+
+            elt = {
+ 	        "class": "uk.gov.gchq.gaffer.data.element.Entity",
+                "properties": {
+                    "type": "blacklist",
+                    "source": "apility.io",
+                    "publisher": "Apility",
+                    "update": {
+                        "uk.gov.gchq.gaffer.time.RBMBackedTimestampSet": {
+                            "timeBucket": "MINUTE",
+                            "timestamps": [time.time()]
+                        }
+                    },
+                    "probability": 0.3
+                },
+                "group": "report",
+                "vertex": "apility." + w
+            }
+
+            elts.append(elt)
+
+    if len(elts) > 0:
+        elts = {
+            "class": "uk.gov.gchq.gaffer.operation.impl.add.AddElements",
+            "validate": True,
+            "skipInvalidElements": False,
+            "input": elts
+        }
+
+        url = "/rest/v2/graph/operations/execute"
+        data = json.dumps(elts)
+        response = g.post(url, data)
+        print response.text
+
+    time.sleep(1)
+
