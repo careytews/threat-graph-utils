@@ -21,7 +21,19 @@ query = {
             "view": {
                 "entities": {
                     "ip": {
-                        "excludeProperties" : [ "count", "time" ]
+                        "excludeProperties" : [ "count", "time" ],
+                        "preAggregationFilterFunctions" : [
+                            {
+                                "selection" : [ "probe" ],
+                                "predicate" : {
+                                    "class" : "uk.gov.gchq.koryphe.impl.predicate.Not",
+                                    "predicate" : {
+                                        "class" : "uk.gov.gchq.koryphe.impl.predicate.IsEqual",
+                                        "value" : "p-0"
+                                    }
+                                }
+                            }
+                        ]
                     }
                 }
             }
@@ -30,6 +42,7 @@ query = {
 }
 
 res = g.execute(query)
+
 ips = sets.Set([v["vertex"] for v in res])
 
 query = {
@@ -40,7 +53,6 @@ query = {
             "view": {
                 "entities": {
                     "ip": {
-                        "excludeProperties" : [ "count", "time" ]
                     }
                 }
             }
@@ -57,8 +69,7 @@ query = {
                             "includeIncomingOutGoing" : "OUTGOING",
                             "view": {
                                 "edges": {
-                                    "reported": {
-                                        "excludeProperties" : [ "count", "time" ]
+                                    "probed": {
                                     }
                                 }
                             }
@@ -72,11 +83,12 @@ query = {
 }
 
 res = g.execute(query)
+
 bad_ips = sets.Set([v["entities"][0].keys()[0] for v in res])
 
 ips = list(ips - bad_ips)
 
-print len(ips)
+ips=ips[0:1000]
 
 def chunks(l, n):
     n = max(1, n)
@@ -85,6 +97,8 @@ def chunks(l, n):
 a = apility.Apility(uuid)
 
 for chunk in chunks(ips, 50):
+
+    print chunk
     
     try:
         res = a.get_ip_reputation(chunk)
@@ -101,8 +115,6 @@ for chunk in chunks(ips, 50):
         blacks = v["blacklists"]
         rep[ip] = blacks
 
-    print rep
-
     elts = []
 
     for v in rep:
@@ -118,7 +130,7 @@ for chunk in chunks(ips, 50):
                         }
                     }
                 },
- 	        "group": "reported",
+ 	        "group": "matches",
  	        "source": v,
  	        "destination": "apility." + w,
  	        "directed": True
@@ -129,7 +141,7 @@ for chunk in chunks(ips, 50):
             elt = {
  	        "class": "uk.gov.gchq.gaffer.data.element.Entity",
                 "properties": {
-                    "type": "blacklist",
+                    "type": "blocklist",
                     "source": "apility.io",
                     "publisher": "Apility",
                     "update": {
@@ -140,11 +152,24 @@ for chunk in chunks(ips, 50):
                     },
                     "probability": 0.3
                 },
-                "group": "report",
+                "group": "blocklist",
                 "vertex": "apility." + w
             }
 
             elts.append(elt)
+        
+        elt = {
+ 	    "class": "uk.gov.gchq.gaffer.data.element.Edge",
+            "source": v,
+            "destination": "apility-ip",
+            "properties": {
+                "probeversion": "v0",
+                "probetime": 1
+            },
+            "group": "probed"
+        }
+
+        elts.append(elt)
 
     if len(elts) > 0:
         elts = {
@@ -157,6 +182,7 @@ for chunk in chunks(ips, 50):
         url = "/rest/v2/graph/operations/execute"
         data = json.dumps(elts)
         response = g.post(url, data)
+        print response
         print response.text
 
     time.sleep(1)

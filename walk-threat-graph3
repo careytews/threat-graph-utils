@@ -83,7 +83,7 @@ query = {
                             "includeIncomingOutGoing" : "OUTGOING",
                             "view": {
                                 "edges": {
-                                    "reported": {
+                                    "matches": {
                                         "excludeProperties" : [ "count", "time" ]
                                     }
                                 }

@@ -21,7 +21,6 @@ query = {
             "view": {
                 "entities": {
                     "domain": {
-                        "excludeProperties" : [ "count", "time" ]
                     }
                 }
             }
@@ -40,7 +39,6 @@ query = {
             "view": {
                 "entities": {
                     "domain": {
-                        "excludeProperties" : [ "count", "time" ]
                     }
                 }
             }
@@ -57,8 +55,7 @@ query = {
                             "includeIncomingOutGoing" : "OUTGOING",
                             "view": {
                                 "edges": {
-                                    "reported": {
-                                        "excludeProperties" : [ "count", "time" ]
+                                    "probed": {
                                     }
                                 }
                             }
@@ -72,88 +69,107 @@ query = {
 }
 
 res = g.execute(query)
+
 bad_domains = sets.Set([v["entities"][0].keys()[0] for v in res])
 
 domains = list(domains - bad_domains)
-print len(domains)
+
+domains = domains[0:500]
 
 def chunks(l, n):
     n = max(1, n)
     return (l[i:i+n] for i in xrange(0, len(l), n))
 
-rep = {}
-
 a = apility.Apility(uuid)
 
 for chunk in chunks(domains, 20):
+
+    print chunk
     
     try:
         res = a.get_domain_reputation(chunk)
 
-        for v in res:
-            domain = v["domain"]
-            blacks = v["scoring"]["domain"]["blacklist"]
-            rep[domain] = blacks
-
     except Exception, e:
         print e
+        time.sleep(5)
+        continue
 
-    time.sleep(5)
+    rep = {}
 
-elts = []
+    for v in res:
+        domain = v["domain"]
+        blacks = v["scoring"]["domain"]["blacklist"]
+        rep[domain] = blacks
 
-for v in rep:
-    for w in rep[v]:
+    elts = []
 
-        elt = {
- 	    "class": "uk.gov.gchq.gaffer.data.element.Edge",
- 	    "properties": {
-                "time": {
-                    "uk.gov.gchq.gaffer.time.RBMBackedTimestampSet": {
-                        "timeBucket": "MINUTE",
-                        "timestamps": [time.time()]
-                    }
-                }
-            },
- 	    "group": "reported",
- 	    "source": v,
- 	    "destination": "apility." + w,
- 	    "directed": True
- 	}
-  
-        elts.append(elt)
+    for v in rep:
+        for w in rep[v]:
 
-        elt = {
- 	    "class": "uk.gov.gchq.gaffer.data.element.Entity",
-            "properties": {
-                "type": "blacklist",
-                "source": "apility.io",
-                "publisher": "Apility",
-                "update": {
-                    "uk.gov.gchq.gaffer.time.RBMBackedTimestampSet": {
-                        "timeBucket": "MINUTE",
-                        "timestamps": [time.time()]
+            elt = {
+ 	        "class": "uk.gov.gchq.gaffer.data.element.Edge",
+ 	        "properties": {
+                    "time": {
+                        "uk.gov.gchq.gaffer.time.RBMBackedTimestampSet": {
+                            "timeBucket": "MINUTE",
+                            "timestamps": [time.time()]
+                        }
                     }
                 },
-                "probability": 0.3
+ 	        "group": "matches",
+ 	        "source": v,
+ 	        "destination": "apility." + w,
+ 	        "directed": True
+ 	    }
+  
+            elts.append(elt)
+
+            elt = {
+ 	        "class": "uk.gov.gchq.gaffer.data.element.Entity",
+                "properties": {
+                    "type": "blocklist",
+                    "source": "apility.io",
+                    "publisher": "Apility",
+                    "update": {
+                        "uk.gov.gchq.gaffer.time.RBMBackedTimestampSet": {
+                            "timeBucket": "MINUTE",
+                            "timestamps": [time.time()]
+                        }
+                    },
+                    "probability": 0.3
+                },
+                "group": "blocklist",
+                "vertex": "apility." + w
+            }
+
+            elts.append(elt)
+        
+        elt = {
+ 	    "class": "uk.gov.gchq.gaffer.data.element.Edge",
+            "source": v,
+            "destination": "apility-ip",
+            "properties": {
+                "probeversion": "v0",
+                "probetime": 1
             },
-            "group": "report",
-            "vertex": "apility." + w
+            "group": "probed"
         }
 
         elts.append(elt)
 
-elts = {
-    "class": "uk.gov.gchq.gaffer.operation.impl.add.AddElements",
-    "validate": True,
-    "skipInvalidElements": False,
-    "input": elts
-}
+    if len(elts) > 0:
+        elts = {
+            "class": "uk.gov.gchq.gaffer.operation.impl.add.AddElements",
+            "validate": True,
+            "skipInvalidElements": False,
+            "input": elts
+        }
 
-print json.dumps(elts, indent=4)
+        url = "/rest/v2/graph/operations/execute"
+        data = json.dumps(elts)
+        response = g.post(url, data)
+        print response
+        print response.text
 
-url = "/rest/v2/graph/operations/execute"
-data = json.dumps(elts)
-response = g.post(url, data)
-print response.text
+    time.sleep(1)
 
