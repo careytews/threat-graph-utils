@@ -74,8 +74,6 @@ bad_domains = sets.Set([v["entities"][0].keys()[0] for v in res])
 
 domains = list(domains - bad_domains)
 
-domains = domains[0:500]
-
 def chunks(l, n):
     n = max(1, n)
     return (l[i:i+n] for i in xrange(0, len(l), n))

@@ -7,6 +7,7 @@ from gaffer import Gaffer
 import sets
 import os
 import time
+import ipaddress
 
 g = Gaffer("https://analytics.trustnetworks.com/gaffer-threat")
 g.use_cert()
@@ -86,10 +87,19 @@ res = g.execute(query)
 
 bad_ips = sets.Set([v["entities"][0].keys()[0] for v in res])
 
-ips = list(ips - bad_ips)
+ips = ips - bad_ips
 
-ips=ips[0:1000]
+# Remove private addresses
+private = sets.Set()
+for v in ips:
+    if ipaddress.ip_address(v).is_private:
+        private.add(v)
+ips = ips - private
 
+# Convert set to list
+ips = list(ips)
+
+# Function allows management in chunks
 def chunks(l, n):
     n = max(1, n)
     return (l[i:i+n] for i in xrange(0, len(l), n))
