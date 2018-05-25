@@ -56,6 +56,18 @@ query = {
                             "view": {
                                 "edges": {
                                     "probed": {
+                                        "preAggregationFilterFunctions" : [
+                                            {
+                                                "selection" : [ "probe" ],
+                                                "predicate" : {
+                                                    "class" : "uk.gov.gchq.koryphe.impl.predicate.Not",
+                                                    "predicate" : {
+                                                        "class" : "uk.gov.gchq.koryphe.impl.predicate.IsEqual",
+                                                        "value" : "v0"
+                                                    }
+                                                }
+                                            }
+                                        ]
                                     }
                                 }
                             }
@@ -70,9 +82,12 @@ query = {
 
 res = g.execute(query)
 
-bad_domains = sets.Set([v["entities"][0].keys()[0] for v in res])
+seen_domains = sets.Set([v["entities"][0].keys()[0] for v in res])
 
-domains = list(domains - bad_domains)
+domains = list(domains - seen_domains)
+
+print domains
+# print sys.exit(0)
 
 def chunks(l, n):
     n = max(1, n)
@@ -147,7 +162,7 @@ for chunk in chunks(domains, 20):
             "source": v,
             "destination": "apility-ip",
             "properties": {
-                "probeversion": "v0",
+                "probe": "v0",
                 "probetime": 1
             },
             "group": "probed"
