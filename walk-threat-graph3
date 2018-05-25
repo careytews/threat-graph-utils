@@ -8,6 +8,7 @@
 import requests
 import json
 import sys
+import pandas as pd
 from gaffer import Gaffer
 
 query = {
@@ -104,14 +105,21 @@ g.use_cert()
 url = "/rest/v2/graph/operations/execute"
 
 res = g.post(url, data=json.dumps(query))
+res = res.json()
 
-for v in res.json():
-    ent = v["entities"]
-    src = ent[0].keys()[0]
-    dest = ent[1].keys()[0]
-    host = ent[2].keys()[0]
-    domain = ent[3].keys()[0]
-    badness = ent[4].keys()[0]
+src = [ent["entities"][0].keys()[0] for ent in res]
+dest = [ent["entities"][1].keys()[0] for ent in res]
+host = [ent["entities"][2].keys()[0] for ent in res]
+domain = [ent["entities"][3].keys()[0] for ent in res]
+blocklist = [ent["entities"][4].keys()[0] for ent in res]
 
-    print "%-15s %-15s %-18s %s" % (src, dest, domain[:18], badness[:22])
+df = pd.DataFrame(
+    {
+        "src": src, "dest": dest, "host": host, "domain": domain,
+        "blocklist": blocklist
+    },
+    columns=["src", "dest", "host", "domain", "blocklist"]
+)
+
+print df[["src", "dest", "domain", "blocklist"]]
 
