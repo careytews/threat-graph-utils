@@ -9,6 +9,9 @@ import os
 import time
 import ipaddress
 
+my_probe_version="v0"
+my_probe_time=1
+
 g = Gaffer("https://analytics.trustnetworks.com/gaffer-threat")
 g.use_cert()
 
@@ -22,19 +25,6 @@ query = {
             "view": {
                 "entities": {
                     "ip": {
-                        "excludeProperties" : [ "count", "time" ],
-                        "preAggregationFilterFunctions" : [
-                            {
-                                "selection" : [ "probe" ],
-                                "predicate" : {
-                                    "class" : "uk.gov.gchq.koryphe.impl.predicate.Not",
-                                    "predicate" : {
-                                        "class" : "uk.gov.gchq.koryphe.impl.predicate.IsEqual",
-                                        "value" : "p-0"
-                                    }
-                                }
-                            }
-                        ]
                     }
                 }
             }
@@ -43,7 +33,6 @@ query = {
 }
 
 res = g.execute(query)
-
 ips = sets.Set([v["vertex"] for v in res])
 
 query = {
@@ -71,6 +60,15 @@ query = {
                             "view": {
                                 "edges": {
                                     "probed": {
+                                        "preAggregationFilterFunctions" : [
+                                            {
+                                                "selection" : [ "probe" ],
+                                                "predicate" : {
+                                                    "class" : "uk.gov.gchq.koryphe.impl.predicate.IsEqual",
+                                                    "value" : my_probe_version
+                                                }
+                                            }
+                                        ]
                                     }
                                 }
                             }
@@ -85,9 +83,9 @@ query = {
 
 res = g.execute(query)
 
-bad_ips = sets.Set([v["entities"][0].keys()[0] for v in res])
+seen_ips = sets.Set([v["entities"][0].keys()[0] for v in res])
 
-ips = ips - bad_ips
+ips = ips - seen_ips
 
 # Remove private addresses
 private = sets.Set()
@@ -173,8 +171,8 @@ for chunk in chunks(ips, 50):
             "source": v,
             "destination": "apility-ip",
             "properties": {
-                "probeversion": "v0",
-                "probetime": 1
+                "probe": my_probe_version,
+                "probetime": my_probe_time
             },
             "group": "probed"
         }

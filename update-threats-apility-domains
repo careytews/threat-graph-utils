@@ -8,6 +8,9 @@ import sets
 import os
 import time
 
+my_probe_version="v0"
+my_probe_time=1
+
 g = Gaffer("https://analytics.trustnetworks.com/gaffer-threat")
 g.use_cert()
 
@@ -60,11 +63,8 @@ query = {
                                             {
                                                 "selection" : [ "probe" ],
                                                 "predicate" : {
-                                                    "class" : "uk.gov.gchq.koryphe.impl.predicate.Not",
-                                                    "predicate" : {
-                                                        "class" : "uk.gov.gchq.koryphe.impl.predicate.IsEqual",
-                                                        "value" : "v0"
-                                                    }
+                                                    "class" : "uk.gov.gchq.koryphe.impl.predicate.IsEqual",
+                                                    "value" : my_probe_version
                                                 }
                                             }
                                         ]
@@ -86,9 +86,7 @@ seen_domains = sets.Set([v["entities"][0].keys()[0] for v in res])
 
 domains = list(domains - seen_domains)
 
-print domains
-# print sys.exit(0)
-
+# Function allows management in chunks
 def chunks(l, n):
     n = max(1, n)
     return (l[i:i+n] for i in xrange(0, len(l), n))
@@ -162,8 +160,8 @@ for chunk in chunks(domains, 20):
             "source": v,
             "destination": "apility-ip",
             "properties": {
-                "probe": "v0",
-                "probetime": 1
+                "probe": my_probe_version,
+                "probetime": my_probe_time
             },
             "group": "probed"
         }
