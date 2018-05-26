@@ -46,6 +46,7 @@ func main() {
 	var esPath = regexp.MustCompile("^/elasticsearch/")
 	var gnPath = regexp.MustCompile("^/gaffer-net/")
 	var grPath = regexp.MustCompile("^/gaffer-risk/")
+	var gtPath = regexp.MustCompile("^/gaffer-threat/")
 
 	s.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		
@@ -161,6 +162,33 @@ func main() {
 
 			r.URL.Path = path
 			r.URL.Host = "localhost:8089"
+			r.URL.Scheme = "http"
+
+			resp, err := http.DefaultTransport.RoundTrip(r)
+
+			if err != nil {
+				log.Printf("503: %s", err.Error())
+				http.Error(w, err.Error(),
+					http.StatusServiceUnavailable)
+				return
+			}
+
+			defer resp.Body.Close()
+			copyHeader(w.Header(), resp.Header)
+			w.WriteHeader(resp.StatusCode)
+			io.Copy(w, resp.Body)
+			return
+
+		}
+
+		if m := gtPath.FindStringSubmatch(r.URL.Path); m != nil {
+
+			path := r.URL.Path[14:]
+
+			fmt.Println(path)
+
+			r.URL.Path = path
+			r.URL.Host = "localhost:8090"
 			r.URL.Scheme = "http"
 
 			resp, err := http.DefaultTransport.RoundTrip(r)
