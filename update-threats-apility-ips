@@ -75,8 +75,7 @@ query = {
                         }
                     ]
                 }
-            ],
-            "resultsLimit" : 1000000
+            ]
         }
     ]
 }
@@ -193,5 +192,5 @@ for chunk in chunks(ips, 50):
         print response
         print response.text
 
-    time.sleep(1)
+    time.sleep(5)
 
