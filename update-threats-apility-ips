@@ -7,101 +7,33 @@ from gaffer import Gaffer
 import sets
 import os
 import time
-import ipaddress
+import threatgraph
 
-my_probe_version="v0"
+my_probe="ap-ip-v0"
 my_probe_time=1
 
-g = Gaffer("https://analytics.trustnetworks.com/gaffer-threat")
-g.use_cert()
+src, pub = ("apility.io", "apility.io")
+probe_id = "apility-io"
+tp = "blacklist"
+prob = 0.3
 
+# Get Threat Graph
+g = threatgraph.Gaffer()
+
+# Get Apility UUID and get connection
 uuid = open("apility-uuid").read().lstrip().rstrip()
+a = apility.Apility(uuid)
 
-query = {
-    "class": "uk.gov.gchq.gaffer.operation.OperationChain",
-    "operations": [
-        {
-            "class": "uk.gov.gchq.gaffer.operation.impl.get.GetAllElements",
-            "view": {
-                "entities": {
-                    "ip": {
-                    }
-                }
-            }
-        }
-    ]
-}
-
-res = g.execute(query)
-ips = sets.Set([v["vertex"] for v in res])
-
-query = {
-    "class": "uk.gov.gchq.gaffer.operation.OperationChain",
-    "operations": [
-        {
-            "class": "uk.gov.gchq.gaffer.operation.impl.get.GetAllElements",
-            "view": {
-                "entities": {
-                    "ip": {
-                    }
-                }
-            }
-            
-        },
-        {
-            "class" : "uk.gov.gchq.gaffer.operation.impl.GetWalks",
-            "operations" : [
-                {
-                    "class" : "uk.gov.gchq.gaffer.operation.OperationChain",
-                    "operations" : [
-                        {
-                            "class" : "uk.gov.gchq.gaffer.operation.impl.get.GetElements",
-                            "includeIncomingOutGoing" : "OUTGOING",
-                            "view": {
-                                "edges": {
-                                    "probed": {
-                                        "preAggregationFilterFunctions" : [
-                                            {
-                                                "selection" : [ "probe" ],
-                                                "predicate" : {
-                                                    "class" : "uk.gov.gchq.koryphe.impl.predicate.IsEqual",
-                                                    "value" : my_probe_version
-                                                }
-                                            }
-                                        ]
-                                    }
-                                }
-                            }
-                        }
-                    ]
-                }
-            ]
-        }
-    ]
-}
-
-res = g.execute(query)
-
-seen_ips = sets.Set([v["entities"][0].keys()[0] for v in res])
-
+ips = g.get_all_ips()
+seen_ips = g.get_probed_ips(my_probe)
 ips = ips - seen_ips
-
-# Remove private addresses
-private = sets.Set()
-for v in ips:
-    if ipaddress.ip_address(v).is_private:
-        private.add(v)
-ips = ips - private
-
-# Convert set to list
-ips = list(ips)
+ips = g.remove_private_ips(ips)
 
 # Function allows management in chunks
 def chunks(l, n):
+    l = list(l)
     n = max(1, n)
     return (l[i:i+n] for i in xrange(0, len(l), n))
-
-a = apility.Apility(uuid)
 
 for chunk in chunks(ips, 50):
 
@@ -112,8 +44,7 @@ for chunk in chunks(ips, 50):
 
     except Exception, e:
         print e
-        time.sleep(5)
-        continue
+        sys.exit(1)
 
     rep = {}
 
@@ -124,61 +55,22 @@ for chunk in chunks(ips, 50):
 
     elts = []
 
-    for v in rep:
-        for w in rep[v]:
+    for ip in rep:
+        for bl in rep[ip]:
 
-            elt = {
- 	        "class": "uk.gov.gchq.gaffer.data.element.Edge",
- 	        "properties": {
-                    "time": {
-                        "uk.gov.gchq.gaffer.time.RBMBackedTimestampSet": {
-                            "timeBucket": "MINUTE",
-                            "timestamps": [time.time()]
-                        }
-                    }
-                },
- 	        "group": "matches",
- 	        "source": v,
- 	        "destination": "apility." + w,
- 	        "directed": True
- 	    }
-  
+            blacklist = "apility." + bl
+            
+            elt = g.make_match_edge(ip, blacklist)
             elts.append(elt)
 
-            elt = {
- 	        "class": "uk.gov.gchq.gaffer.data.element.Entity",
-                "properties": {
-                    "type": "blocklist",
-                    "source": "apility.io",
-                    "publisher": "Apility",
-                    "update": {
-                        "uk.gov.gchq.gaffer.time.RBMBackedTimestampSet": {
-                            "timeBucket": "MINUTE",
-                            "timestamps": [time.time()]
-                        }
-                    },
-                    "probability": 0.3
-                },
-                "group": "blocklist",
-                "vertex": "apility." + w
-            }
-
+            elt = g.make_blacklist_entity(blacklist, prob, tp, src, pub)
             elts.append(elt)
         
-        elt = {
- 	    "class": "uk.gov.gchq.gaffer.data.element.Edge",
-            "source": v,
-            "destination": "apility-ip",
-            "properties": {
-                "probe": my_probe_version,
-                "probetime": my_probe_time
-            },
-            "group": "probed"
-        }
-
+        elt = g.make_probed_edge(ip, probe_id, my_probe, my_probe_time)
         elts.append(elt)
 
     if len(elts) > 0:
+
         elts = {
             "class": "uk.gov.gchq.gaffer.operation.impl.add.AddElements",
             "validate": True,
@@ -189,8 +81,10 @@ for chunk in chunks(ips, 50):
         url = "/rest/v2/graph/operations/execute"
         data = json.dumps(elts)
         response = g.post(url, data)
-        print response
-        print response.text
 
-    time.sleep(5)
+        if response.status_code != 200:
+            print response.text
+            sys.exit(1)
+
+    time.sleep(1)
 
