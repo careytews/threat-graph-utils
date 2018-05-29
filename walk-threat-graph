@@ -8,8 +8,8 @@
 import requests
 import json
 import sys
-import pandas as pd
 from gaffer import Gaffer
+from tabulate import tabulate
 
 query = {
     "class": "uk.gov.gchq.gaffer.operation.OperationChain",
@@ -107,19 +107,12 @@ url = "/rest/v2/graph/operations/execute"
 res = g.post(url, data=json.dumps(query))
 res = res.json()
 
-src = [ent["entities"][0].keys()[0] for ent in res]
-dest = [ent["entities"][1].keys()[0] for ent in res]
-server = [ent["entities"][2].keys()[0] for ent in res]
-domain = [ent["entities"][3].keys()[0] for ent in res]
-blocklist = [ent["entities"][4].keys()[0] for ent in res]
+data = [
+    [ent["entities"][0].keys()[0], ent["entities"][1].keys()[0],
+     ent["entities"][2].keys()[0], ent["entities"][3].keys()[0],
+     ent["entities"][4].keys()[0]]
+    for ent in res
+]
 
-df = pd.DataFrame(
-    {
-        "src": src, "dest": dest, "server": server, "domain": domain,
-        "blocklist": blocklist
-    },
-    columns=["src", "dest", "server", "domain", "blocklist"]
-)
-
-print df[["src", "dest", "domain", "blocklist"]]
+print tabulate(data, headers=["src", "dest", "server", "domain", "block"])
 
