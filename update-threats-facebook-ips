@@ -55,7 +55,9 @@ for ip in ips:
     for threat in res["data"]:
 
         # Blacklist name
-        blacklist = "faceboook." + threat["severity"] + "." + threat["owner"]["id"]
+        severity = threat["severity"]
+        threat_id = threat["owner"]["id"]
+        blacklist = "faceboook." + severity + "." + threat_id
             
         # Create a blacklist match edge
         elt = g.make_match_edge(ip, blacklist)

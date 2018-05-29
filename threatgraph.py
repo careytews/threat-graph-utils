@@ -185,14 +185,12 @@ class Gaffer(gaffer.Gaffer):
  	    "directed": True
         }
 
-    def make_blacklist_entity(self, blacklist, prob, tp, source, pub):
+    def make_blacklist_entity(self, blacklist, prob=0.3, tp="", source="",
+                              pub=""):
 
-        return {
+        elt = {
  	    "class": "uk.gov.gchq.gaffer.data.element.Entity",
             "properties": {
-                "type": tp,
-                "source": source,
-                "publisher": pub,
                 "update": {
                     "uk.gov.gchq.gaffer.time.RBMBackedTimestampSet": {
                         "timeBucket": "HOUR",
@@ -204,6 +202,12 @@ class Gaffer(gaffer.Gaffer):
             "group": "blacklist",
             "vertex": blacklist
         }
+
+        if tp == "": elt["properties"]["type"] = tp
+        if source == "": elt["properties"]["source"] = source
+        if pub == "": elt["properties"]["pub"] = pub
+
+        return elt
 
     def make_probed_edge(self, thing, prober, probe, time):
         return {
