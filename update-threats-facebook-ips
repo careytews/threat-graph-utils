@@ -1,0 +1,91 @@
+#!/usr/bin/env python
+
+import facebook
+import json
+import sys
+import time
+import threatgraph
+
+# Information about me, the prober
+my_probe="fb-ip-v0"
+my_probe_time=1
+probe_id = "facebook-ip"
+
+# Blacklist source info
+src, pub = ("apility.io", "apility.io")
+tp = "blacklist"
+prob = 0.1
+
+# Get Threat Graph
+g = threatgraph.Gaffer()
+
+# Get Facebook creds
+creds = json.loads(open("facebook-creds").read())
+fb = facebook.Facebook(creds["id"], creds["secret"])
+
+# Get list of all IPs which need to be updated.
+ips = g.get_all_ips()
+seen_ips = g.get_probed_ips(my_probe)
+ips = ips - seen_ips
+ips = g.remove_private_ips(ips)
+
+# Function allows management in chunks
+def chunks(l, n):
+    n = max(1, n)
+    return (l[i:i+n] for i in xrange(0, len(l), n))
+
+# Iterate over IPs
+for ip in ips:
+
+    print ip
+    
+    try:
+        res = fb.get_ip_report(ip)
+
+    except Exception, e:
+        print e
+        sys.exit(1)
+
+    # Initialise graph elements
+    elts = []
+
+    print res
+    print res["data"]
+
+    # Iterate over threat data
+    for threat in res["data"]:
+
+        # Blacklist name
+        blacklist = "faceboook." + threat["type"] + "." + threat["severity"]
+            
+        # Create a blacklist match edge
+        elt = g.make_match_edge(ip, blacklist)
+        elts.append(elt)
+
+        # Create a blacklist entity (probably exists already)
+        elt = g.make_blacklist_entity(blacklist, prob, tp, src, pub)
+        elts.append(elt)
+
+    # Create a probed edge
+    elt = g.make_probed_edge(ip, probe_id, my_probe, my_probe_time)
+    elts.append(elt)
+
+    # Turn element list into a Gaffer operation
+    elts = {
+        "class": "uk.gov.gchq.gaffer.operation.impl.add.AddElements",
+        "validate": True,
+        "skipInvalidElements": False,
+        "input": elts
+    }
+
+    # Execute Gaffer insert
+    url = "/rest/v2/graph/operations/execute"
+    data = json.dumps(elts)
+    response = g.post(url, data)
+
+    # If status code is bad, fail
+    if response.status_code != 200:
+        print response.text
+
+    time.sleep(0.01)
+

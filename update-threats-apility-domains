@@ -6,11 +6,13 @@ import sys
 import time
 import threatgraph
 
+# Information about me, the prober
 my_probe="ap-dm-v0"
 my_probe_time=1
-
-src, pub = ("apility.io", "apility.io")
 probe_id = "apility-domain"
+
+# Blacklist source info
+src, pub = ("apility.io", "apility.io")
 tp = "blacklist"
 prob = 0.3
 
