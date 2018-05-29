@@ -25,8 +25,9 @@ class Facebook:
         
         query_params = urllib.urlencode({
             'access_token': self.id + '|' + self.secret,
-            'type' : "IP_ADDRESS",
-            'text' : ip
+            'type': "IP_ADDRESS",
+            'text': ip,
+            'strict_text' : True
         })
 
         url = "%s/v2.4/threat_descriptors?" % self.base + query_params
@@ -43,8 +44,9 @@ class Facebook:
         
         query_params = urllib.urlencode({
             'access_token': self.id + '|' + self.secret,
-            'type' : "DOMAIN",
-            'text' : domain
+            'type': "DOMAIN",
+            'text': domain,
+            'strict_text': True
         })
 
         url = "%s/v2.4/threat_descriptors?" % self.base + query_params
@@ -57,3 +59,20 @@ class Facebook:
 
         return r.json()
 
+    def sev_prob(self, x):
+        return {
+            "UNKNOWN": 0.0,
+            "INFO": 0.0,
+            "WARNING": 0.2,
+            "SUSPICIOUS": 0.3,
+            "SEVERE": 0.7,
+            "APOCALYPSE": 1.0
+        }.get(x, 0.0)
+
+    def status_prob(self, x):
+        return {
+            "UNKNOWN": 0.0,
+            "NON_MALICIOUS": 0.0,
+            "SUSPICIOUS": 0.7,
+            "MALICIOUS": 0.9
+        }.get(x, 0.0)

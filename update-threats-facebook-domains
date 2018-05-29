@@ -14,7 +14,6 @@ probe_id = "facebook-domain"
 # Blacklist source info
 src = "facebook.com"
 tp = "blacklist"
-prob = 0.1
 
 # Get Threat Graph
 g = threatgraph.Gaffer()
@@ -71,14 +70,15 @@ for domain in domains:
                                 severity=threat["severity"])
         elts.append(elt)
 
-        p = prob
-        if threat["severity"] == "INFO":
-            p = 0.0
-        if threat["status"] == "NON_MALICIOUS":
-            p = 0.0
+        conf = threat["confidence"] / 100.0
+        status = threat["status"]
+        severity = threat["severity"]
+        prob = fb.status_prob(status) * fb.sev_prob(severity) * conf
+
+        print "Probability = ", prob
 
         # Create a blacklist entity (probably exists already)
-        elt = g.make_blacklist_entity(blacklist, p, tp, src, pub)
+        elt = g.make_blacklist_entity(blacklist, prob, tp, src, pub)
         elts.append(elt)
 
     # Create a probed edge
