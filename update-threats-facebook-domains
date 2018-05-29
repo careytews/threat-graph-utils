@@ -26,10 +26,7 @@ fb = facebook.Facebook(creds["id"], creds["secret"])
 # Get list of all domains which need to be updated.
 domains = g.get_all_domains()
 seen_domains = g.get_probed_domains(my_probe)
-seen_ips = sets.Set()
 domains = domains - seen_domains
-        
-print len(domains)
 
 # Function allows management in chunks
 def chunks(l, n):
@@ -52,7 +49,6 @@ for domain in domains:
     elts = []
 
     print res
-    print res["data"]
 
     # Iterate over threat data
     for threat in res["data"]:

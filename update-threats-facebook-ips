@@ -5,7 +5,6 @@ import json
 import sys
 import time
 import threatgraph
-import sets
 
 # Information about me, the prober
 my_probe="fb-ip-v0"
@@ -27,7 +26,6 @@ fb = facebook.Facebook(creds["id"], creds["secret"])
 # Get list of all IPs which need to be updated.
 ips = g.get_all_ips()
 seen_ips = g.get_probed_ips(my_probe)
-seen_ips = sets.Set()
 ips = ips - seen_ips
 ips = g.remove_private_ips(ips)
 
@@ -52,7 +50,6 @@ for ip in ips:
     elts = []
 
     print res
-    print res["data"]
 
     # Iterate over threat data
     for threat in res["data"]:
