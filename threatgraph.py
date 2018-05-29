@@ -31,6 +31,26 @@ class Gaffer(gaffer.Gaffer):
 
         return ips
 
+    def get_all_domains(self):
+        query = {
+            "class": "uk.gov.gchq.gaffer.operation.OperationChain",
+            "operations": [
+                {
+                    "class": "uk.gov.gchq.gaffer.operation.impl.get.GetAllElements",
+                    "view": {
+                        "entities": {
+                            "domain": {
+                            }
+                        }
+                    }
+                }
+            ]
+        }
+
+        res = self.execute(query)
+        domains = sets.Set([v["vertex"] for v in res])
+
+        return domains
 
     def get_probed_ips(self, probe):
 
@@ -84,6 +104,59 @@ class Gaffer(gaffer.Gaffer):
         seen_ips = sets.Set([v["entities"][0].keys()[0] for v in res])
 
         return seen_ips
+
+    def get_probed_domains(self, probe):
+
+        query = {
+            "class": "uk.gov.gchq.gaffer.operation.OperationChain",
+            "operations": [
+                {
+                    "class": "uk.gov.gchq.gaffer.operation.impl.get.GetAllElements",
+                    "view": {
+                        "entities": {
+                            "domain": {
+                            }
+                        }
+                    }
+                    
+                },
+                {
+                    "class" : "uk.gov.gchq.gaffer.operation.impl.GetWalks",
+                    "operations" : [
+                        {
+                            "class" : "uk.gov.gchq.gaffer.operation.OperationChain",
+                            "operations" : [
+                                {
+                                    "class" : "uk.gov.gchq.gaffer.operation.impl.get.GetElements",
+                                    "includeIncomingOutGoing" : "OUTGOING",
+                                    "view": {
+                                        "edges": {
+                                            "probed": {
+                                                "preAggregationFilterFunctions" : [
+                                                    {
+                                                        "selection" : [ "probe" ],
+                                                        "predicate" : {
+                                                            "class" : "uk.gov.gchq.koryphe.impl.predicate.IsEqual",
+                                                            "value" : probe
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+
+        res = self.execute(query)
+
+        seen_domains = sets.Set([v["entities"][0].keys()[0] for v in res])
+
+        return seen_domains
 
     def remove_private_ips(self, ips):
 

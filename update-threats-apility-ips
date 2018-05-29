@@ -3,9 +3,6 @@
 import apility
 import json
 import sys
-from gaffer import Gaffer
-import sets
-import os
 import time
 import threatgraph
 
@@ -13,7 +10,7 @@ my_probe="ap-ip-v0"
 my_probe_time=1
 
 src, pub = ("apility.io", "apility.io")
-probe_id = "apility-io"
+probe_id = "apility-ip"
 tp = "blacklist"
 prob = 0.3
 
@@ -24,6 +21,7 @@ g = threatgraph.Gaffer()
 uuid = open("apility-uuid").read().lstrip().rstrip()
 a = apility.Apility(uuid)
 
+# Get list of all IPs which need to be updated.
 ips = g.get_all_ips()
 seen_ips = g.get_probed_ips(my_probe)
 ips = ips - seen_ips
@@ -35,56 +33,70 @@ def chunks(l, n):
     n = max(1, n)
     return (l[i:i+n] for i in xrange(0, len(l), n))
 
+# Iterate over data chunks
 for chunk in chunks(ips, 50):
 
     print chunk
     
     try:
+
+        # Get reputation
         res = a.get_ip_reputation(chunk)
 
     except Exception, e:
         print e
         sys.exit(1)
 
-    rep = {}
 
+    # Parse results
+    rep = {}
     for v in res:
         ip = v["ip"]
         blacks = v["blacklists"]
         rep[ip] = blacks
 
+    # Create graph elements
     elts = []
 
+    # Iterate over IPs
     for ip in rep:
+
+        # Iterate over blacklist listings for this IP
         for bl in rep[ip]:
 
+            # Blacklist name
             blacklist = "apility." + bl
             
+            # Create a blacklist match edge
             elt = g.make_match_edge(ip, blacklist)
             elts.append(elt)
 
+            # Create a blacklist entity (probably exists already)
             elt = g.make_blacklist_entity(blacklist, prob, tp, src, pub)
             elts.append(elt)
-        
+
+        # Create a probed edge
         elt = g.make_probed_edge(ip, probe_id, my_probe, my_probe_time)
         elts.append(elt)
 
-    if len(elts) > 0:
+    # Turn element list into a Gaffer operation
+    elts = {
+        "class": "uk.gov.gchq.gaffer.operation.impl.add.AddElements",
+        "validate": True,
+        "skipInvalidElements": False,
+        "input": elts
+    }
 
-        elts = {
-            "class": "uk.gov.gchq.gaffer.operation.impl.add.AddElements",
-            "validate": True,
-            "skipInvalidElements": False,
-            "input": elts
-        }
+    # Execute Gaffer insert
+    url = "/rest/v2/graph/operations/execute"
+    data = json.dumps(elts)
+    response = g.post(url, data)
 
-        url = "/rest/v2/graph/operations/execute"
-        data = json.dumps(elts)
-        response = g.post(url, data)
+    # If status code is bad, fail
+    if response.status_code != 200:
+        print response.text
+        sys.exit(1)
 
-        if response.status_code != 200:
-            print response.text
-            sys.exit(1)
-
+    # Sleep for a bit to throttle the load on the reputation service.
     time.sleep(1)
 
