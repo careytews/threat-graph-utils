@@ -5,6 +5,7 @@ import json
 import sys
 import time
 import threatgraph
+import sets
 
 # Information about me, the prober
 my_probe="fb-ip-v0"
@@ -12,7 +13,7 @@ my_probe_time=1
 probe_id = "facebook-ip"
 
 # Blacklist source info
-src, pub = ("apility.io", "apility.io")
+src, pub = ("facebook.com", "facebook.com")
 tp = "blacklist"
 prob = 0.1
 
@@ -26,6 +27,7 @@ fb = facebook.Facebook(creds["id"], creds["secret"])
 # Get list of all IPs which need to be updated.
 ips = g.get_all_ips()
 seen_ips = g.get_probed_ips(my_probe)
+seen_ips = sets.Set()
 ips = ips - seen_ips
 ips = g.remove_private_ips(ips)
 
@@ -56,14 +58,20 @@ for ip in ips:
     for threat in res["data"]:
 
         # Blacklist name
-        blacklist = "faceboook." + threat["type"] + "." + threat["severity"]
+        blacklist = "faceboook." + threat["severity"] + "." + threat["owner"]["id"]
             
         # Create a blacklist match edge
         elt = g.make_match_edge(ip, blacklist)
         elts.append(elt)
 
+        p = prob
+        if threat["severity"] == "INFO":
+            p = 0.0
+        if threat["status"] == "NON_MALICIOUS":
+            p = 0.0
+
         # Create a blacklist entity (probably exists already)
-        elt = g.make_blacklist_entity(blacklist, prob, tp, src, pub)
+        elt = g.make_blacklist_entity(blacklist, p, tp, src, pub)
         elts.append(elt)
 
     # Create a probed edge

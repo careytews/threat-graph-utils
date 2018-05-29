@@ -19,7 +19,6 @@ class Facebook:
     def __init__(self, id, secret):
         self.id = id
         self.secret = secret
-        self.owner_app_id = 820763734618599
         self.base = "https://graph.facebook.com/"
 
     def get_ip_report(self, ip):
@@ -27,7 +26,6 @@ class Facebook:
         query_params = urllib.urlencode({
             'access_token': self.id + '|' + self.secret,
             'type' : "IP_ADDRESS",
-            'owner' : self.owner_app_id,
             'text' : ip
         })
 
@@ -46,7 +44,6 @@ class Facebook:
         query_params = urllib.urlencode({
             'access_token': self.id + '|' + self.secret,
             'type' : "DOMAIN",
-            'owner' : self.owner_app_id,
             'text' : domain
         })
 

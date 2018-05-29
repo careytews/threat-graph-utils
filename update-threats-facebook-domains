@@ -26,6 +26,7 @@ fb = facebook.Facebook(creds["id"], creds["secret"])
 # Get list of all domains which need to be updated.
 domains = g.get_all_domains()
 seen_domains = g.get_probed_domains(my_probe)
+seen_ips = sets.Set()
 domains = domains - seen_domains
         
 print len(domains)
@@ -57,14 +58,20 @@ for domain in domains:
     for threat in res["data"]:
 
         # Blacklist name
-        blacklist = "faceboook." + threat["type"] + "." + threat["severity"]
+        blacklist = "faceboook." + threat["severity"] + "." + threat["owner"]["id"]
             
         # Create a blacklist match edge
         elt = g.make_match_edge(domain, blacklist)
         elts.append(elt)
 
+        p = prob
+        if threat["severity"] == "INFO":
+            p = 0.0
+        if threat["status"] == "NON_MALICIOUS":
+            p = 0.0
+
         # Create a blacklist entity (probably exists already)
-        elt = g.make_blacklist_entity(blacklist, prob, tp, src, pub)
+        elt = g.make_blacklist_entity(blacklist, p, tp, src, pub)
         elts.append(elt)
 
     # Create a probed edge
