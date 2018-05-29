@@ -167,9 +167,10 @@ class Gaffer(gaffer.Gaffer):
                 private.add(v)
         return ips - private
 
-    def make_match_edge(self, ip, blacklist):
+    def make_match_edge(self, ip, blacklist, id="", description="",
+                        status="", severity=""):
 
-        return {
+        elt = {
  	    "class": "uk.gov.gchq.gaffer.data.element.Edge",
  	    "properties": {
                 "time": {
@@ -185,8 +186,15 @@ class Gaffer(gaffer.Gaffer):
  	    "directed": True
         }
 
+        if id != "": elt["properties"]["id"] = id
+        if description != "": elt["properties"]["description"] = description
+        if status != "": elt["properties"]["status"] = status
+        if severity != "": elt["properties"]["severity"] = severity
+
+        return elt
+
     def make_blacklist_entity(self, blacklist, prob=0.3, tp="", source="",
-                              pub=""):
+                              pub="", name="", ):
 
         elt = {
  	    "class": "uk.gov.gchq.gaffer.data.element.Entity",
@@ -203,9 +211,9 @@ class Gaffer(gaffer.Gaffer):
             "vertex": blacklist
         }
 
-        if tp == "": elt["properties"]["type"] = tp
-        if source == "": elt["properties"]["source"] = source
-        if pub == "": elt["properties"]["pub"] = pub
+        if tp != "": elt["properties"]["type"] = tp
+        if source != "": elt["properties"]["source"] = source
+        if pub != "": elt["properties"]["publisher"] = pub
 
         return elt
 

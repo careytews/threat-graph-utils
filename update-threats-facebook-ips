@@ -12,7 +12,7 @@ my_probe_time=1
 probe_id = "facebook-ip"
 
 # Blacklist source info
-src, pub = ("facebook.com", "facebook.com")
+src = "facebook.com"
 tp = "blacklist"
 prob = 0.1
 
@@ -56,11 +56,15 @@ for ip in ips:
 
         # Blacklist name
         severity = threat["severity"]
-        threat_id = threat["owner"]["id"]
-        blacklist = "faceboook." + severity + "." + threat_id
+        owner_id = threat["owner"]["id"]
+        pub = threat["owner"]["name"]
+        blacklist = "faceboook." + severity + "." + owner_id
             
         # Create a blacklist match edge
-        elt = g.make_match_edge(ip, blacklist)
+        elt = g.make_match_edge(ip, blacklist, id=threat["id"],
+                                description=threat["description"],
+                                status=threat["status"],
+                                severity=threat["severity"])
         elts.append(elt)
 
         p = prob
