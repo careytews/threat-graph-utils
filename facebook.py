@@ -61,18 +61,48 @@ class Facebook:
 
     def sev_prob(self, x):
         return {
-            "UNKNOWN": 0.0,
-            "INFO": 0.0,
-            "WARNING": 0.2,
-            "SUSPICIOUS": 0.3,
-            "SEVERE": 0.7,
+            "UNKNOWN": 0.1,
+            "INFO": 0.3,
+            "WARNING": 0.5,
+            "SUSPICIOUS": 0.7,
+            "SEVERE": 0.9,
             "APOCALYPSE": 1.0
         }.get(x, 0.0)
 
     def status_prob(self, x):
         return {
-            "UNKNOWN": 0.0,
+            "UNKNOWN": 0.1,
             "NON_MALICIOUS": 0.0,
             "SUSPICIOUS": 0.7,
-            "MALICIOUS": 0.9
+            "MALICIOUS": 1.0
         }.get(x, 0.0)
+
+    def parse_threat(self, threat):
+
+        severity = threat["severity"]
+        status=threat["status"]
+        owner_id = threat["owner"]["id"]
+        pub = threat["owner"]["name"]
+        conf = threat["confidence"]
+
+        # Convoluted way to make a blacklist name out of severity status,
+        # confidence
+        tag = severity[0] + status[0] + str(int(conf / 10))
+        blacklist = "%s.%s.%s" % ("facebook", owner_id, tag)
+
+        id = threat["id"]
+
+        if threat.has_key("description"):
+            desc = threat["description"]
+        else:
+            desc = ""
+
+        # Make confidence a value in 0..1 to one decimal place.
+        conf = int(conf / 10)/10.0
+
+        print self.status_prob(status), self.sev_prob(severity), conf
+        prob = self.status_prob(status) * self.sev_prob(severity) * conf
+        pub = threat["owner"]["name"]
+
+        return blacklist, prob, id, desc, status, severity, pub
+

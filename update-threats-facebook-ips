@@ -25,6 +25,7 @@ fb = facebook.Facebook(creds["id"], creds["secret"])
 # Get list of all IPs which need to be updated.
 ips = g.get_all_ips()
 seen_ips = g.get_probed_ips(my_probe)
+
 ips = ips - seen_ips
 ips = g.remove_private_ips(ips)
 
@@ -54,32 +55,18 @@ for ip in ips:
     for threat in res["data"]:
 
         # Blacklist name
-        severity = threat["severity"]
-        owner_id = threat["owner"]["id"]
-        pub = threat["owner"]["name"]
-        blacklist = "faceboook." + severity + "." + owner_id
-
-        if threat.has_key("description"):
-            desc = threat["description"]
-        else:
-            desc = ""
-                        
+        bl, prob, id, desc, status, severity, pub = fb.parse_threat(threat)
+  
         # Create a blacklist match edge
-        elt = g.make_match_edge(ip, blacklist, id=threat["id"],
-                                description=desc,
-                                status=threat["status"],
-                                severity=threat["severity"])
+        elt = g.make_match_edge(ip, bl, id=id, description=desc,
+                                status=status, severity=severity)
         elts.append(elt)
 
-        conf = threat["confidence"] / 100.0
-        status = threat["status"]
-        severity = threat["severity"]
-        prob = fb.status_prob(status) * fb.sev_prob(severity) * conf
-
+        print "Blaclist = ", bl
         print "Probability = ", prob
 
         # Create a blacklist entity (probably exists already)
-        elt = g.make_blacklist_entity(blacklist, prob, tp, src, pub)
+        elt = g.make_blacklist_entity(bl, prob, tp, src, pub)
         elts.append(elt)
 
     # Create a probed edge

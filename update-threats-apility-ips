@@ -14,7 +14,6 @@ probe_id = "apility-ip"
 # Blacklist source info
 src, pub = ("apility.io", "apility.io")
 tp = "blacklist"
-prob = 0.3
 
 # Get Threat Graph
 g = threatgraph.Gaffer()
@@ -68,6 +67,8 @@ for chunk in chunks(ips, 50):
 
             # Blacklist name
             blacklist = "apility." + bl
+
+            prob = a.get_probability(bl)
             
             # Create a blacklist match edge
             elt = g.make_match_edge(ip, blacklist)
@@ -100,5 +101,5 @@ for chunk in chunks(ips, 50):
         sys.exit(1)
 
     # Sleep for a bit to throttle the load on the reputation service.
-    time.sleep(1)
+    time.sleep(2)
 

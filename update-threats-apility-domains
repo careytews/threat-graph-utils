@@ -14,7 +14,6 @@ probe_id = "apility-domain"
 # Blacklist source info
 src, pub = ("apility.io", "apility.io")
 tp = "blacklist"
-prob = 0.3
 
 # Get Threat Graph
 g = threatgraph.Gaffer()
@@ -67,6 +66,8 @@ for chunk in chunks(domains, 20):
 
             # Blacklist name
             blacklist = "apility." + bl
+
+            prob = a.get_probability(bl)
             
             # Create a blacklist match edge
             elt = g.make_match_edge(domain, blacklist)
@@ -98,5 +99,5 @@ for chunk in chunks(domains, 20):
         print response.text
         sys.exit(1)
 
-    time.sleep(0.1)
+    time.sleep(2)
 
