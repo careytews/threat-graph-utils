@@ -8,34 +8,44 @@
 import requests
 import json
 import sys
-from gaffer import Gaffer
+import threatgraph
+from tabulate import tabulate
 
 query = {
-  "class": "uk.gov.gchq.gaffer.operation.OperationChain",
-  "operations": [
-    {
-      "class": "uk.gov.gchq.gaffer.operation.impl.get.GetAllElements",
+    "class": "uk.gov.gchq.gaffer.operation.OperationChain",
+    "operations": [
+        {
+            "class": "uk.gov.gchq.gaffer.operation.impl.get.GetAllElements",
             "view": {
                 "edges": {
                     "matches": {}
+                },
+                "entities": {
+                    "blacklist": {}
                 }
             }
-     
-    }
-  ]
+        }
+    ]
 }
 
-g = Gaffer("https://analytics.trustnetworks.com/gaffer-threat")
-# g = Gaffer("http://localhost:8080")
+g = threatgraph.Gaffer()
 g.use_cert()
 
 url = "/rest/v2/graph/operations/execute"
-  
 res = g.post(url, data=json.dumps(query))
 
 obj = res.json()
 
+prob = {}
 for o in obj:
-    print o["source"], o["destination"]
+    if o["group"] == "blacklist":
+        prob[o["vertex"]] = o["properties"]["probability"]
 
-    
+data = []        
+
+for o in obj:
+    if o["group"] == "matches":
+        p = prob.get(o["destination"], 0.0)
+        data.append([o["source"], o["destination"], p])
+
+print tabulate(data, headers=["source", "blacklist", "probability"])

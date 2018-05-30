@@ -1,0 +1,23 @@
+#!/usr/bin/env python
+
+# Displays adjacent IP addresses, with a limit of 15.
+
+# Runs GetElements to perform a query, and then uses Limit to restrict the
+# data set to 15.
+
+import requests
+import json
+import sys
+from gaffer import Gaffer
+
+g = Gaffer("https://analytics.trustnetworks.com/gaffer-threat")
+g.use_cert()
+
+url = "/rest/v2/graph/config/schema"
+  
+res = g.get(url)
+
+print json.dumps(res.json(), indent=4)
+
+
+
