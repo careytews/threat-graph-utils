@@ -37,15 +37,22 @@ res = g.post(url, data=json.dumps(query))
 obj = res.json()
 
 prob = {}
+src = {}
 for o in obj:
     if o["group"] == "blacklist":
         prob[o["vertex"]] = o["properties"]["probability"]
+        src[o["vertex"]] = o["properties"]["source"]
 
 data = []        
 
 for o in obj:
     if o["group"] == "matches":
-        p = prob.get(o["destination"], 0.0)
-        data.append([o["source"], o["destination"], p])
+        thing = o["source"]
+        bl = o["destination"]
+        p = prob.get(bl, 0.0)
+        s = src.get(bl, "")
+        d = o["properties"]["description"]
+        data.append([thing, s, p, d])
 
-print tabulate(data, headers=["source", "blacklist", "probability"])
+print tabulate(data, headers=["origin", "source", "probability", "desc"])
+

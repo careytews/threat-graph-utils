@@ -100,7 +100,6 @@ class Facebook:
         # Make confidence a value in 0..1 to one decimal place.
         conf = int(conf / 10)/10.0
 
-        print self.status_prob(status), self.sev_prob(severity), conf
         prob = self.status_prob(status) * self.sev_prob(severity) * conf
         pub = threat["owner"]["name"]
 

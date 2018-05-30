@@ -47,10 +47,21 @@ for domain in domains:
     # Initialise graph elements
     elts = []
 
-    print res
-
     # Iterate over threat data
     for threat in res["data"]:
+
+        ok = True
+        for reac in threat.get("reactions", []):
+            if reac["key"] == "NOT_HELPFUL":
+                ok = False
+
+        if ok == False:
+            print "Ignoring blacklist, marked NOT HELPFUL"
+            continue
+
+        if threat["review_status"] == "UNREVIEWED":
+            print "Ignore unreviewed threat"
+            continue
 
         # Blacklist name
         bl, prob, id, desc, status, severity, pub = fb.parse_threat(threat)
@@ -60,8 +71,9 @@ for domain in domains:
                                 status=status, severity=severity)
         elts.append(elt)
 
-        print "Blaclist = ", bl
+        print "Blacklist = ", bl
         print "Probability = ", prob
+        print "Description = ", desc
 
         # Create a blacklist entity (probably exists already)
         elt = g.make_blacklist_entity(bl, prob, tp, src, pub)
