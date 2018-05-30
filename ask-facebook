@@ -1,0 +1,13 @@
+#!/usr/bin/env python
+
+import facebook
+import sys
+import json
+
+creds = json.loads(open("facebook-creds").read())
+fb = facebook.Facebook(creds["id"], creds["secret"])
+
+res = fb.get_domain_report(sys.argv[1])
+
+print json.dumps(res, indent=4)
+
