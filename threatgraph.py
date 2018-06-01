@@ -168,7 +168,7 @@ class Gaffer(gaffer.Gaffer):
         return ips - private
 
     def make_match_edge(self, ip, blacklist, id="", description="",
-                        status="", severity=""):
+                        status="", severity="", time=time.time()):
 
         elt = {
  	    "class": "uk.gov.gchq.gaffer.data.element.Edge",
@@ -176,7 +176,7 @@ class Gaffer(gaffer.Gaffer):
                 "time": {
                     "uk.gov.gchq.gaffer.time.RBMBackedTimestampSet": {
                         "timeBucket": "HOUR",
-                        "timestamps": [time.time()]
+                        "timestamps": [time]
                     }
                 }
             },
@@ -194,7 +194,7 @@ class Gaffer(gaffer.Gaffer):
         return elt
 
     def make_blacklist_entity(self, blacklist, prob=0.3, tp="", source="",
-                              pub="", name="", ):
+                              pub="", name="", time=time.time()):
 
         elt = {
  	    "class": "uk.gov.gchq.gaffer.data.element.Entity",
@@ -202,7 +202,7 @@ class Gaffer(gaffer.Gaffer):
                 "update": {
                     "uk.gov.gchq.gaffer.time.RBMBackedTimestampSet": {
                         "timeBucket": "HOUR",
-                        "timestamps": [time.time()]
+                        "timestamps": [time]
                         }
                 },
                 "probability": prob

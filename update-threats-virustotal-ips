@@ -1,26 +1,28 @@
 #!/usr/bin/env python
 
-import facebook
+from virus_total_apis import PrivateApi as VirusTotalPrivateApi
 import json
 import sys
 import time
 import threatgraph
+import datetime
 
 # Information about me, the prober
-my_probe="fb-ip-v0"
+my_probe="vt-ip-v0"
 my_probe_time=1
-probe_id = "facebook-ip"
+probe_id = "virustotal-ip"
 
 # Blacklist source info
-src = "facebook.com"
-tp = "blacklist"
+src = "virustotal.com"
+pub = "virustotal.com"
+tp = "scan"
 
 # Get Threat Graph
 g = threatgraph.Gaffer()
 
-# Get Facebook creds
-creds = json.loads(open("facebook-creds").read())
-fb = facebook.Facebook(creds["id"], creds["secret"])
+# Get VT creds
+api_key = open("virustotal-key").read().lstrip().rstrip()
+vt = VirusTotalPrivateApi(api_key)
 
 # Get list of all IPs which need to be updated.
 ips = g.get_all_ips()
@@ -37,37 +39,29 @@ for ip in ips:
     print ip
     
     try:
-        res = fb.get_ip_report(ip)
+        res = vt.get_ip_report(ip)
+        dets = res.get("results", {}).get("detected_urls", [])
 
     except Exception, e:
-        print e
+        print "Exception", e
         sys.exit(1)
 
-    # Initialise graph elements
     elts = []
 
-    # Iterate over threat data
-    for threat in res["data"]:
-
-        ok = True
-        for reac in threat.get("reactions", []):
-            if reac["key"] == "NOT_HELPFUL":
-                ok = False
-
-        if ok == False:
-            print "Ignoring blacklist, marked NOT HELPFUL"
-            continue
-
-        if threat["review_status"] == "UNREVIEWED":
-            print "Ignore unreviewed threat"
-            continue
+    for det in dets:
+        print det
+        tm = det["scan_date"]
+        tm = datetime.datetime.strptime(tm, "%Y-%m-%d %H:%M:%S")
+        tm = time.mktime(tm.timetuple())
 
         # Blacklist name
-        bl, prob, id, desc, status, severity, pub = fb.parse_threat(threat)
-  
+        bl = "vt.IP_DETECTED"
+        prob = 0.1
+        id = det["url"]
+        desc = "VirusTotal hit on %s" % det["url"]
+            
         # Create a blacklist match edge
-        elt = g.make_match_edge(ip, bl, id=id, description=desc,
-                                status=status, severity=severity)
+        elt = g.make_match_edge(ip, bl, id=id, description=desc, time=tm)
         elts.append(elt)
 
         print "Blacklist = ", bl
@@ -89,7 +83,7 @@ for ip in ips:
         "skipInvalidElements": False,
         "input": elts
     }
-
+    
     # Execute Gaffer insert
     url = "/rest/v2/graph/operations/execute"
     data = json.dumps(elts)
@@ -98,6 +92,4 @@ for ip in ips:
     # If status code is bad, fail
     if response.status_code != 200:
         print response.text
-
-    time.sleep(0.01)
 

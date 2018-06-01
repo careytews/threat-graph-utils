@@ -52,7 +52,7 @@ for o in obj:
         p = prob.get(bl, 0.0)
         s = src.get(bl, "")
         d = o["properties"]["description"]
-        data.append([thing, s, p, d])
+        data.append([thing, s, p, bl, d])
 
-print tabulate(data, headers=["origin", "source", "probability", "desc"])
+print tabulate(data, headers=["origin", "source", "probability", "blacklist", "desc"])
 
