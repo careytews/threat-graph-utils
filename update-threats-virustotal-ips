@@ -55,7 +55,7 @@ for ip in ips:
         tm = time.mktime(tm.timetuple())
 
         # Blacklist name
-        bl = "vt.IP_DETECTED"
+        bl = "vt." + det["url"]
         prob = 0.1
         id = det["url"]
         desc = "VirusTotal hit on %s" % det["url"]
@@ -69,7 +69,7 @@ for ip in ips:
         print "Description = ", desc
 
         # Create a blacklist entity (probably exists already)
-        elt = g.make_blacklist_entity(bl, prob, tp, src, pub)
+        elt = g.make_blacklist_entity(bl, prob, tp, src, pub, time=tm)
         elts.append(elt)
 
     # Create a probed edge

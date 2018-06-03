@@ -51,7 +51,7 @@ for domain in domains:
         tm = time.mktime(tm.timetuple())
 
         # Blacklist name
-        bl = "vt.DOMAIN_DETECTED"
+        bl = "vt." + det["url"]
         prob = 0.1
         id = det["url"]
         desc = "VirusTotal hit on %s" % det["url"]
@@ -65,7 +65,7 @@ for domain in domains:
         print "Description = ", desc
 
         # Create a blacklist entity (probably exists already)
-        elt = g.make_blacklist_entity(bl, prob, tp, src, pub)
+        elt = g.make_blacklist_entity(bl, prob, tp, src, pub, time=tm)
         elts.append(elt)
 
     # Create a probed edge
