@@ -23,9 +23,7 @@ uuid = open("apility-uuid").read().lstrip().rstrip()
 a = apility.Apility(uuid)
 
 # Get list of all domains which need to be updated.
-domains = g.get_all_domains()
-seen_domains = g.get_probed_domains(my_probe)
-domains = domains - seen_domains
+domains = g.get_unprobed_domains(my_probe)
 
 # Function allows management in chunks
 def chunks(l, n):

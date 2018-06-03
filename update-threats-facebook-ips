@@ -23,11 +23,7 @@ creds = json.loads(open("facebook-creds").read())
 fb = facebook.Facebook(creds["id"], creds["secret"])
 
 # Get list of all IPs which need to be updated.
-ips = g.get_all_ips()
-seen_ips = g.get_probed_ips(my_probe)
-
-ips = ips - seen_ips
-ips = g.remove_private_ips(ips)
+ips = g.get_unprobed_ips(my_probe)
 
 print len(ips), "IPs to probe"
 

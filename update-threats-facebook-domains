@@ -23,14 +23,7 @@ creds = json.loads(open("facebook-creds").read())
 fb = facebook.Facebook(creds["id"], creds["secret"])
 
 # Get list of all domains which need to be updated.
-domains = g.get_all_domains()
-seen_domains = g.get_probed_domains(my_probe)
-domains = domains - seen_domains
-
-# Function allows management in chunks
-def chunks(l, n):
-    n = max(1, n)
-    return (l[i:i+n] for i in xrange(0, len(l), n))
+domains = g.get_unprobed_domains(my_probe)
 
 # Iterate over domains
 for domain in domains:

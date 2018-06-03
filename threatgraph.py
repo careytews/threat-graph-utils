@@ -228,3 +228,24 @@ class Gaffer(gaffer.Gaffer):
             },
             "group": "probed"
         }
+
+    def get_unprobed_domains(self, my_probe):
+
+        # Get list of all domains which need to be updated.
+        domains = self.get_all_domains()
+        seen_domains = self.get_probed_domains(my_probe)
+        domains = domains - seen_domains
+
+        return domains
+
+    def get_unprobed_ips(self, my_probe):
+
+        # Get list of all IPs which need to be updated.
+        ips = self.get_all_ips()
+        seen_ips = self.get_probed_ips(my_probe)
+
+        ips = ips - seen_ips
+        ips = self.remove_private_ips(ips)
+
+        return ips
+
