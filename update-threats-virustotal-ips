@@ -17,30 +17,7 @@ src = "virustotal.com"
 pub = "virustotal.com"
 tp = "scan"
 
-# Get Threat Graph
-g = threatgraph.Gaffer()
-
-# Get VT creds
-api_key = open("virustotal-key").read().lstrip().rstrip()
-vt = VirusTotalPrivateApi(api_key)
-
-# Get list of all IPs which need to be updated.
-ips = g.get_unprobed_ips(my_probe)
-
-print len(ips), "IPs to probe"
-
-# Iterate over IPs
-for ip in ips:
-
-    print ip
-    
-    try:
-        res = vt.get_ip_report(ip)
-        dets = res.get("results", {}).get("detected_urls", [])
-
-    except Exception, e:
-        print "Exception", e
-        sys.exit(1)
+def create_elts(ip, dets):
 
     elts = []
 
@@ -79,7 +56,36 @@ for ip in ips:
         "skipInvalidElements": False,
         "input": elts
     }
+
+    return elts
+
+# Get Threat Graph
+g = threatgraph.Gaffer()
+
+# Get VT creds
+api_key = open("virustotal-key").read().lstrip().rstrip()
+vt = VirusTotalPrivateApi(api_key)
+
+# Get list of all IPs which need to be updated.
+ips = g.get_unprobed_ips(my_probe)
+
+print len(ips), "IPs to probe"
+
+# Iterate over IPs
+for ip in ips:
+
+    print ip
     
+    try:
+        res = vt.get_ip_report(ip)
+        dets = res.get("results", {}).get("detected_urls", [])
+
+    except Exception, e:
+        print "Exception", e
+        sys.exit(1)
+
+    elts = create_elts(ip, dets)
+
     # Execute Gaffer insert
     url = "/rest/v2/graph/operations/execute"
     data = json.dumps(elts)

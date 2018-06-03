@@ -15,28 +15,8 @@ probe_id = "facebook-domain"
 src = "facebook.com"
 tp = "blacklist"
 
-# Get Threat Graph
-g = threatgraph.Gaffer()
-
-# Get Facebook creds
-creds = json.loads(open("facebook-creds").read())
-fb = facebook.Facebook(creds["id"], creds["secret"])
-
-# Get list of all domains which need to be updated.
-domains = g.get_unprobed_domains(my_probe)
-
-# Iterate over domains
-for domain in domains:
-
-    print domain
+def create_elts(domain, threats):
     
-    try:
-        res = fb.get_domain_report(domain)
-
-    except Exception, e:
-        print e
-        sys.exit(1)
-
     # Initialise graph elements
     elts = []
 
@@ -83,6 +63,32 @@ for domain in domains:
         "skipInvalidElements": False,
         "input": elts
     }
+
+    return elts
+
+# Get Threat Graph
+g = threatgraph.Gaffer()
+
+# Get Facebook creds
+creds = json.loads(open("facebook-creds").read())
+fb = facebook.Facebook(creds["id"], creds["secret"])
+
+# Get list of all domains which need to be updated.
+domains = g.get_unprobed_domains(my_probe)
+
+# Iterate over domains
+for domain in domains:
+
+    print domain
+    
+    try:
+        res = fb.get_domain_report(domain)
+
+    except Exception, e:
+        print e
+        sys.exit(1)
+
+    elts = create_elts(domain, res["data"])
 
     # Execute Gaffer insert
     url = "/rest/v2/graph/operations/execute"

@@ -15,30 +15,8 @@ probe_id = "facebook-ip"
 src = "facebook.com"
 tp = "blacklist"
 
-# Get Threat Graph
-g = threatgraph.Gaffer()
-
-# Get Facebook creds
-creds = json.loads(open("facebook-creds").read())
-fb = facebook.Facebook(creds["id"], creds["secret"])
-
-# Get list of all IPs which need to be updated.
-ips = g.get_unprobed_ips(my_probe)
-
-print len(ips), "IPs to probe"
-
-# Iterate over IPs
-for ip in ips:
-
-    print ip
+def create_elts(ip, threats):
     
-    try:
-        res = fb.get_ip_report(ip)
-
-    except Exception, e:
-        print e
-        sys.exit(1)
-
     # Initialise graph elements
     elts = []
 
@@ -85,6 +63,34 @@ for ip in ips:
         "skipInvalidElements": False,
         "input": elts
     }
+
+    return elts
+
+# Get Threat Graph
+g = threatgraph.Gaffer()
+
+# Get Facebook creds
+creds = json.loads(open("facebook-creds").read())
+fb = facebook.Facebook(creds["id"], creds["secret"])
+
+# Get list of all IPs which need to be updated.
+ips = g.get_unprobed_ips(my_probe)
+
+print len(ips), "IPs to probe"
+
+# Iterate over IPs
+for ip in ips:
+
+    print ip
+    
+    try:
+        res = fb.get_ip_report(ip)
+
+    except Exception, e:
+        print e
+        sys.exit(1)
+
+    elts = create_elts(ip, res["data"])
 
     # Execute Gaffer insert
     url = "/rest/v2/graph/operations/execute"

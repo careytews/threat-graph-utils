@@ -17,28 +17,7 @@ src = "virustotal.com"
 pub = "virustotal.com"
 tp = "scan"
 
-# Get Threat Graph
-g = threatgraph.Gaffer()
-
-# Get VT creds
-api_key = open("virustotal-key").read().lstrip().rstrip()
-vt = VirusTotalPrivateApi(api_key)
-
-# Get list of all domains which need to be updated.
-domains = g.get_unprobed_domains(my_probe)
-
-# Iterate over domains
-for domain in domains:
-
-    print domain
-    
-    try:
-        res = vt.get_domain_report(domain)
-        dets = res.get("results", {}).get("detected_urls", [])
-
-    except Exception, e:
-        print "Exception", e
-        sys.exit(1)
+def create_elts(domain, dets):
 
     elts = []
 
@@ -77,6 +56,33 @@ for domain in domains:
         "skipInvalidElements": False,
         "input": elts
     }
+
+    return elts
+
+# Get Threat Graph
+g = threatgraph.Gaffer()
+
+# Get VT creds
+api_key = open("virustotal-key").read().lstrip().rstrip()
+vt = VirusTotalPrivateApi(api_key)
+
+# Get list of all domains which need to be updated.
+domains = g.get_unprobed_domains(my_probe)
+
+# Iterate over domains
+for domain in domains:
+
+    print domain
+    
+    try:
+        res = vt.get_domain_report(domain)
+        dets = res.get("results", {}).get("detected_urls", [])
+
+    except Exception, e:
+        print "Exception", e
+        sys.exit(1)
+
+    elts = create_elts(domain, dets)
     
     # Execute Gaffer insert
     url = "/rest/v2/graph/operations/execute"

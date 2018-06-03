@@ -15,6 +15,44 @@ probe_id = "apility-domain"
 src, pub = ("apility.io", "apility.io")
 tp = "blacklist"
 
+def create_elts(reps):
+
+    # Create graph elements
+    elts = []
+
+    # Iterate over IPs
+    for domain in rep:
+
+        # Iterate over blacklist listings for this domain
+        for bl in rep[domain]:
+
+            # Blacklist name
+            blacklist = "apility." + bl
+
+            prob = a.get_probability(bl)
+            
+            # Create a blacklist match edge
+            elt = g.make_match_edge(domain, blacklist)
+            elts.append(elt)
+
+            # Create a blacklist entity (probably exists already)
+            elt = g.make_blacklist_entity(blacklist, prob, tp, src, pub)
+            elts.append(elt)
+
+        # Create a probed edge
+        elt = g.make_probed_edge(domain, probe_id, my_probe, my_probe_time)
+        elts.append(elt)
+
+    # Turn element list into a Gaffer operation
+    elts = {
+        "class": "uk.gov.gchq.gaffer.operation.impl.add.AddElements",
+        "validate": True,
+        "skipInvalidElements": False,
+        "input": elts
+    }
+
+    return elts
+
 # Get Threat Graph
 g = threatgraph.Gaffer()
 
@@ -53,39 +91,7 @@ for chunk in chunks(domains, 20):
         blacks = v["scoring"]["domain"]["blacklist"]
         rep[domain] = blacks
 
-    # Create graph elements
-    elts = []
-
-    # Iterate over IPs
-    for domain in rep:
-
-        # Iterate over blacklist listings for this domain
-        for bl in rep[domain]:
-
-            # Blacklist name
-            blacklist = "apility." + bl
-
-            prob = a.get_probability(bl)
-            
-            # Create a blacklist match edge
-            elt = g.make_match_edge(domain, blacklist)
-            elts.append(elt)
-
-            # Create a blacklist entity (probably exists already)
-            elt = g.make_blacklist_entity(blacklist, prob, tp, src, pub)
-            elts.append(elt)
-
-        # Create a probed edge
-        elt = g.make_probed_edge(domain, probe_id, my_probe, my_probe_time)
-        elts.append(elt)
-
-    # Turn element list into a Gaffer operation
-    elts = {
-        "class": "uk.gov.gchq.gaffer.operation.impl.add.AddElements",
-        "validate": True,
-        "skipInvalidElements": False,
-        "input": elts
-    }
+    elts = create_elts(rep)
 
     # Execute Gaffer insert
     url = "/rest/v2/graph/operations/execute"
