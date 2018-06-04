@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 
-import facebook
 import json
 import sys
 import time
-import threatgraph
+import updater
 
 # Information about me, the prober
 my_probe="fb-dm-v0"
@@ -15,66 +14,12 @@ probe_id = "facebook-domain"
 src = "facebook.com"
 tp = "blacklist"
 
-def create_elts(domain, threats):
-    
-    # Initialise graph elements
-    elts = []
-
-    # Iterate over threat data
-    for threat in res["data"]:
-
-        ok = True
-        for reac in threat.get("reactions", []):
-            if reac["key"] == "NOT_HELPFUL":
-                ok = False
-
-        if ok == False:
-            print "Ignoring blacklist, marked NOT HELPFUL"
-            continue
-
-        if threat["review_status"] == "UNREVIEWED":
-            print "Ignore unreviewed threat"
-            continue
-
-        # Blacklist name
-        bl, prob, id, desc, status, severity, pub = fb.parse_threat(threat)
-            
-        # Create a blacklist match edge
-        elt = g.make_match_edge(domain, bl, id=id, description=desc,
-                                status=status, severity=severity)
-        elts.append(elt)
-
-        print "Blacklist = ", bl
-        print "Probability = ", prob
-        print "Description = ", desc
-
-        # Create a blacklist entity (probably exists already)
-        elt = g.make_blacklist_entity(bl, prob, tp, src, pub)
-        elts.append(elt)
-
-    # Create a probed edge
-    elt = g.make_probed_edge(domain, probe_id, my_probe, my_probe_time)
-    elts.append(elt)
-
-    # Turn element list into a Gaffer operation
-    elts = {
-        "class": "uk.gov.gchq.gaffer.operation.impl.add.AddElements",
-        "validate": True,
-        "skipInvalidElements": False,
-        "input": elts
-    }
-
-    return elts
-
 # Get Threat Graph
-g = threatgraph.Gaffer()
-
-# Get Facebook creds
-creds = json.loads(open("facebook-creds").read())
-fb = facebook.Facebook(creds["id"], creds["secret"])
+u = updater.FacebookUpdater(probe=my_probe, probe_time=my_probe_time,
+                            probe_id=probe_id)
 
 # Get list of all domains which need to be updated.
-domains = g.get_unprobed_domains(my_probe)
+domains = u.g.get_unprobed_domains(my_probe)
 
 # Iterate over domains
 for domain in domains:
@@ -82,18 +27,18 @@ for domain in domains:
     print domain
     
     try:
-        res = fb.get_domain_report(domain)
+        res = u.fb.get_domain_report(domain)
 
     except Exception, e:
         print e
         sys.exit(1)
 
-    elts = create_elts(domain, res["data"])
+    elts = u.facebook_threats_to_elts(domain, res["data"])
 
     # Execute Gaffer insert
     url = "/rest/v2/graph/operations/execute"
     data = json.dumps(elts)
-    response = g.post(url, data)
+    response = u.g.post(url, data)
 
     # If status code is bad, fail
     if response.status_code != 200:
