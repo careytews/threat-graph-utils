@@ -1,97 +1,15 @@
 #!/usr/bin/env python
 
-from virus_total_apis import PrivateApi as VirusTotalPrivateApi
-import json
 import sys
-import time
-import threatgraph
-import datetime
+import updater
 
-# Information about me, the prober
-my_probe="vt-ip-v0"
-my_probe_time=1
-probe_id = "virustotal-ip"
+try:
 
-# Blacklist source info
-src = "virustotal.com"
-pub = "virustotal.com"
-tp = "scan"
+    u = updater.VirusTotalUpdater.ip_updater()
+    u.update()
 
-def create_elts(ip, dets):
+except Exception, e:
 
-    elts = []
-
-    for det in dets:
-        print det
-        tm = det["scan_date"]
-        tm = datetime.datetime.strptime(tm, "%Y-%m-%d %H:%M:%S")
-        tm = time.mktime(tm.timetuple())
-
-        # Blacklist name
-        bl = "vt." + det["url"]
-        prob = 0.1
-        id = det["url"]
-        desc = "VirusTotal hit on %s" % det["url"]
-            
-        # Create a blacklist match edge
-        elt = g.make_match_edge(ip, bl, id=id, description=desc, time=tm)
-        elts.append(elt)
-
-        print "Blacklist = ", bl
-        print "Probability = ", prob
-        print "Description = ", desc
-
-        # Create a blacklist entity (probably exists already)
-        elt = g.make_blacklist_entity(bl, prob, tp, src, pub, time=tm)
-        elts.append(elt)
-
-    # Create a probed edge
-    elt = g.make_probed_edge(ip, probe_id, my_probe, my_probe_time)
-    elts.append(elt)
-
-    # Turn element list into a Gaffer operation
-    elts = {
-        "class": "uk.gov.gchq.gaffer.operation.impl.add.AddElements",
-        "validate": True,
-        "skipInvalidElements": False,
-        "input": elts
-    }
-
-    return elts
-
-# Get Threat Graph
-g = threatgraph.Gaffer()
-
-# Get VT creds
-api_key = open("virustotal-key").read().lstrip().rstrip()
-vt = VirusTotalPrivateApi(api_key)
-
-# Get list of all IPs which need to be updated.
-ips = g.get_unprobed_ips(my_probe)
-
-print len(ips), "IPs to probe"
-
-# Iterate over IPs
-for ip in ips:
-
-    print ip
-    
-    try:
-        res = vt.get_ip_report(ip)
-        dets = res.get("results", {}).get("detected_urls", [])
-
-    except Exception, e:
-        print "Exception", e
-        sys.exit(1)
-
-    elts = create_elts(ip, dets)
-
-    # Execute Gaffer insert
-    url = "/rest/v2/graph/operations/execute"
-    data = json.dumps(elts)
-    response = g.post(url, data)
-
-    # If status code is bad, fail
-    if response.status_code != 200:
-        print response.text
+    print e
+    sys.exit(1)
 
