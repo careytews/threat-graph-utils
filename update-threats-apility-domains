@@ -1,107 +1,15 @@
 #!/usr/bin/env python
 
-import apility
-import json
 import sys
-import time
-import threatgraph
+import updater
 
-# Information about me, the prober
-my_probe="ap-dm-v0"
-my_probe_time=1
-probe_id = "apility-domain"
+try:
 
-# Blacklist source info
-src, pub = ("apility.io", "apility.io")
-tp = "blacklist"
+    u = updater.ApilityUpdater.domain_updater()
+    u.update()
 
-def create_elts(reps):
+except Exception, e:
 
-    # Create graph elements
-    elts = []
-
-    # Iterate over IPs
-    for domain in rep:
-
-        # Iterate over blacklist listings for this domain
-        for bl in rep[domain]:
-
-            # Blacklist name
-            blacklist = "apility." + bl
-
-            prob = a.get_probability(bl)
-            
-            # Create a blacklist match edge
-            elt = g.make_match_edge(domain, blacklist)
-            elts.append(elt)
-
-            # Create a blacklist entity (probably exists already)
-            elt = g.make_blacklist_entity(blacklist, prob, tp, src, pub)
-            elts.append(elt)
-
-        # Create a probed edge
-        elt = g.make_probed_edge(domain, probe_id, my_probe, my_probe_time)
-        elts.append(elt)
-
-    # Turn element list into a Gaffer operation
-    elts = {
-        "class": "uk.gov.gchq.gaffer.operation.impl.add.AddElements",
-        "validate": True,
-        "skipInvalidElements": False,
-        "input": elts
-    }
-
-    return elts
-
-# Get Threat Graph
-g = threatgraph.Gaffer()
-
-# Get Apility UUID and get connection
-uuid = open("apility-uuid").read().lstrip().rstrip()
-a = apility.Apility(uuid)
-
-# Get list of all domains which need to be updated.
-domains = g.get_unprobed_domains(my_probe)
-
-# Function allows management in chunks
-def chunks(l, n):
-    l = list(l)
-    n = max(1, n)
-    return (l[i:i+n] for i in xrange(0, len(l), n))
-
-# Iterate over data chunks
-for chunk in chunks(domains, 20):
-
-    print chunk
-    
-    try:
-
-        # Get reputation
-        res = a.get_domain_reputation(chunk)
-
-    except Exception, e:
-        print e
-        sys.exit(1)
-
-
-    # Parse results
-    rep = {}
-    for v in res:
-        domain = v["domain"]
-        blacks = v["scoring"]["domain"]["blacklist"]
-        rep[domain] = blacks
-
-    elts = create_elts(rep)
-
-    # Execute Gaffer insert
-    url = "/rest/v2/graph/operations/execute"
-    data = json.dumps(elts)
-    response = g.post(url, data)
-
-    # If status code is bad, fail
-    if response.status_code != 200:
-        print response.text
-        sys.exit(1)
-
-    time.sleep(2)
+    print e
+    sys.exit(1)
 

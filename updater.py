@@ -243,15 +243,16 @@ class ApilityUpdater(Updater):
         u = ApilityUpdater("ap-dm-v0", probe_time, "apility-domain")
 
         u.fetcher = lambda self: self.g.get_unprobed_domains(self.probe)
+        u.chunk_size=5
 
-        def reporter(self, domain):
+        def reporter(self, chunk):
             # FIXME: Use batch
-            res = self.ap.get_domain_reputation([domain])
+            res = self.ap.get_domain_reputation(chunk)
             rep = {}
             for v in res:
-                ip = v["ip"]
-                blacks = v["blacklists"]
-                rep[ip] = blacks
+                domain = v["domain"]
+                blacks = v["scoring"]["domain"]["blacklist"]
+                rep[domain] = blacks
             return self.ap_threats_to_elts(rep)
 
         u.reporter = reporter
@@ -265,10 +266,11 @@ class ApilityUpdater(Updater):
         u = ApilityUpdater("ap-ip-v0", probe_time, "apility-ip")
 
         u.fetcher = lambda self: self.g.get_unprobed_ips(self.probe)
+        u.chunk_size=20
 
-        def reporter(self, ip):
+        def reporter(self, chunk):
             # FIXME: Use batch
-            res = self.ap.get_ip_reputation([ip])
+            res = self.ap.get_ip_reputation(chunk)
             rep = {}
             for v in res:
                 ip = v["ip"]
@@ -313,6 +315,9 @@ class ApilityUpdater(Updater):
                 elt = self.g.make_match_edge(thing, blacklist)
                 elts.append(elt)
 
+                print "Blacklist = ", bl
+                print "Probability = ", prob
+
                 # Create a blacklist entity (probably exists already)
                 elt = self.g.make_blacklist_entity(blacklist, prob, self.tp,
                                                    self.src, self.pub)
@@ -333,3 +338,33 @@ class ApilityUpdater(Updater):
 
         return elts
 
+    def update(self):
+
+        # Get list of all things which need to be updated.
+        things = self.fetcher(self)
+
+        # Function allows management in chunks
+        def chunks(l, n):
+            l = list(l)
+            n = max(1, n)
+            return (l[i:i+n] for i in xrange(0, len(l), n))
+        
+        # Iterate over domains
+        for chunk in chunks(things, self.chunk_size):
+
+            print chunk
+    
+            elts = self.reporter(self, chunk)
+
+            # Execute Gaffer insert
+            url = "/rest/v2/graph/operations/execute"
+            data = json.dumps(elts)
+            response = self.g.post(url, data)
+
+            # If status code is bad, fail
+            if response.status_code != 200:
+                print response.text
+
+            time.sleep(0.5)
+
+    
