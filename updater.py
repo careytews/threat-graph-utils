@@ -1,6 +1,7 @@
 
 import json
 import facebook
+import apility
 from virus_total_apis import PrivateApi as VirusTotalPrivateApi
 import threatgraph
 import time
@@ -222,6 +223,105 @@ class VirusTotalUpdater(Updater):
         elt = self.g.make_probed_edge(thing, self.probe_id, self.probe,
                                       self.probe_time)
         elts.append(elt)
+
+        # Turn element list into a Gaffer operation
+        elts = {
+            "class": "uk.gov.gchq.gaffer.operation.impl.add.AddElements",
+            "validate": True,
+            "skipInvalidElements": False,
+            "input": elts
+        }
+
+        return elts
+
+class ApilityUpdater(Updater):
+
+    @staticmethod
+    def domain_updater():
+
+        probe_time=1
+        u = ApilityUpdater("ap-dm-v0", probe_time, "apility-domain")
+
+        u.fetcher = lambda self: self.g.get_unprobed_domains(self.probe)
+
+        def reporter(self, domain):
+            # FIXME: Use batch
+            res = self.ap.get_domain_reputation([domain])
+            rep = {}
+            for v in res:
+                ip = v["ip"]
+                blacks = v["blacklists"]
+                rep[ip] = blacks
+            return self.ap_threats_to_elts(rep)
+
+        u.reporter = reporter
+
+        return u
+
+    @staticmethod
+    def ip_updater():
+
+        probe_time=1
+        u = ApilityUpdater("ap-ip-v0", probe_time, "apility-ip")
+
+        u.fetcher = lambda self: self.g.get_unprobed_ips(self.probe)
+
+        def reporter(self, ip):
+            # FIXME: Use batch
+            res = self.ap.get_ip_reputation([ip])
+            rep = {}
+            for v in res:
+                ip = v["ip"]
+                blacks = v["blacklists"]
+                rep[ip] = blacks
+            return self.ap_threats_to_elts(rep)
+
+        u.reporter = reporter
+
+        return u
+
+    def __init__(self, probe, probe_time, probe_id):
+
+        Updater.__init__(self, probe, probe_time, probe_id)
+
+        # Blacklist source info
+        self.src = "apility.io"
+        self.pub = "apility.io"
+        self.tp = "blacklist"
+
+        # Get Apility UUID and get connection
+        uuid = open("apility-uuid").read().lstrip().rstrip()
+        self.ap = apility.Apility(uuid)
+
+    def ap_threats_to_elts(self, rep):
+
+        # Create graph elements
+        elts = []
+
+        # Iterate over things
+        for thing in rep:
+
+            # Iterate over blacklist listings for this IP
+            for bl in rep[thing]:
+
+                # Blacklist name
+                blacklist = "apility." + bl
+
+                prob = self.ap.get_probability(bl)
+
+                # Create a blacklist match edge
+                elt = self.g.make_match_edge(thing, blacklist)
+                elts.append(elt)
+
+                # Create a blacklist entity (probably exists already)
+                elt = self.g.make_blacklist_entity(blacklist, prob, self.tp,
+                                                   self.src, self.pub)
+                elts.append(elt)
+
+            # Create a probed edge
+            elt = self.g.make_probed_edge(thing, self.probe_id, self.probe,
+                                          self.probe_time)
+            elts.append(elt)
 
         # Turn element list into a Gaffer operation
         elts = {

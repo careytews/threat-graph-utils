@@ -1,108 +1,15 @@
 #!/usr/bin/env python
 
-import apility
-import json
 import sys
-import time
-import threatgraph
+import updater
 
-# Information about me, the prober
-my_probe="ap-ip-v0"
-my_probe_time=1
-probe_id = "apility-ip"
+try:
 
-# Blacklist source info
-src, pub = ("apility.io", "apility.io")
-tp = "blacklist"
+    u = updater.ApilityUpdater.ip_updater()
+    u.update()
 
-def create_elts(rep):
-    
-    # Create graph elements
-    elts = []
+except Exception, e:
 
-    # Iterate over IPs
-    for ip in rep:
-
-        # Iterate over blacklist listings for this IP
-        for bl in rep[ip]:
-
-            # Blacklist name
-            blacklist = "apility." + bl
-
-            prob = a.get_probability(bl)
-            
-            # Create a blacklist match edge
-            elt = g.make_match_edge(ip, blacklist)
-            elts.append(elt)
-
-            # Create a blacklist entity (probably exists already)
-            elt = g.make_blacklist_entity(blacklist, prob, tp, src, pub)
-            elts.append(elt)
-
-        # Create a probed edge
-        elt = g.make_probed_edge(ip, probe_id, my_probe, my_probe_time)
-        elts.append(elt)
-
-    # Turn element list into a Gaffer operation
-    elts = {
-        "class": "uk.gov.gchq.gaffer.operation.impl.add.AddElements",
-        "validate": True,
-        "skipInvalidElements": False,
-        "input": elts
-    }
-
-    return elts
-
-# Get Threat Graph
-g = threatgraph.Gaffer()
-
-# Get Apility UUID and get connection
-uuid = open("apility-uuid").read().lstrip().rstrip()
-a = apility.Apility(uuid)
-
-# Get list of all IPs which need to be updated.
-ips = g.get_unprobed_ips(my_probe)
-
-# Function allows management in chunks
-def chunks(l, n):
-    l = list(l)
-    n = max(1, n)
-    return (l[i:i+n] for i in xrange(0, len(l), n))
-
-# Iterate over data chunks
-for chunk in chunks(ips, 50):
-
-    print chunk
-    
-    try:
-
-        # Get reputation
-        res = a.get_ip_reputation(chunk)
-
-    except Exception, e:
-        print e
-        sys.exit(1)
-
-    # Parse results
-    rep = {}
-    for v in res:
-        ip = v["ip"]
-        blacks = v["blacklists"]
-        rep[ip] = blacks
-
-    # Create graph elements
-    elts = create_elts(rep)
-
-    # Execute Gaffer insert
-    url = "/rest/v2/graph/operations/execute"
-    data = json.dumps(elts)
-    response = g.post(url, data)
-
-    # If status code is bad, fail
-    if response.status_code != 200:
-        print response.text
-        sys.exit(1)
-
-    # Sleep for a bit to throttle the load on the reputation service.
-    time.sleep(2)
+    print e
+    sys.exit(1)
 
