@@ -38,7 +38,7 @@ class Updater:
             if response.status_code != 200:
                 print response.text
 
-            time.sleep(0.01)
+            time.sleep(1)
 
 class FacebookUpdater(Updater):
 
@@ -365,6 +365,6 @@ class ApilityUpdater(Updater):
             if response.status_code != 200:
                 print response.text
 
-            time.sleep(0.5)
+            time.sleep(2)
 
     
