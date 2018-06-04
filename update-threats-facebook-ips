@@ -1,46 +1,16 @@
 #!/usr/bin/env python
 
-import json
 import sys
-import time
 import updater
 
-# Information about me, the prober
-my_probe="fb-ip-v0"
-my_probe_time=1
-probe_id = "facebook-ip"
+try:
 
-# Get Threat Graph
-u = updater.FacebookUpdater(probe=my_probe, probe_time=my_probe_time,
-                            probe_id=probe_id)
+    # Get Threat Graph
+    u = updater.FacebookUpdater.ip_updater()
+    u.update()
 
-# Get list of all IPs which need to be updated.
-ips = u.g.get_unprobed_ips(my_probe)
+except Exception, e:
 
-print len(ips), "IPs to probe"
-
-# Iterate over IPs
-for ip in ips:
-
-    print ip
-    
-    try:
-        res = u.fb.get_ip_report(ip)
-
-    except Exception, e:
-        print e
-        sys.exit(1)
-
-    elts = u.facebook_threats_to_elts(ip, res["data"])
-
-    # Execute Gaffer insert
-    url = "/rest/v2/graph/operations/execute"
-    data = json.dumps(elts)
-    response = u.g.post(url, data)
-
-    # If status code is bad, fail
-    if response.status_code != 200:
-        print response.text
-
-    time.sleep(0.01)
+    print e
+    sys.exit(1)
 

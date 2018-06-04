@@ -2,8 +2,37 @@
 import json
 import facebook
 import threatgraph
+import time
 
 class FacebookUpdater:
+
+    @staticmethod
+    def domain_updater():
+        # Information about me, the prober
+        probe="fb-dm-v0"
+        probe_time=1
+        probe_id = "facebook-domain"
+
+        u = FacebookUpdater(probe=probe, probe_time=probe_time,
+                            probe_id=probe_id)
+
+        u.fetcher = FacebookUpdater.get_unprobed_domains
+
+        return u
+
+    @staticmethod
+    def ip_updater():
+        # Information about me, the prober
+        probe="fb-ip-v0"
+        probe_time=1
+        probe_id = "facebook-ip"
+
+        u = FacebookUpdater(probe=probe, probe_time=probe_time,
+                            probe_id=probe_id)
+
+        u.fetcher = FacebookUpdater.get_unprobed_ips
+
+        return u
 
     def __init__(self, probe, probe_time, probe_id):
         self.g = threatgraph.Gaffer()
@@ -72,4 +101,38 @@ class FacebookUpdater:
         }
 
         return elts
+
+    def get_unprobed_domains(self):
+        return self.g.get_unprobed_domains(self.probe)
+    
+    def get_unprobed_ips(self):
+        return self.g.get_unprobed_ips(self.probe)
+    
+    def update(self):
+
+        # Get list of all domains which need to be updated.
+        things = self.fetcher(self)
+        
+        # Iterate over domains
+        for thing in things:
+
+            print thing
+    
+            if self.probe_id == "facebook-domain":
+                res = self.fb.get_domain_report(thing)
+            else:
+                res = self.fb.get_ip_report(thing)
+
+            elts = self.facebook_threats_to_elts(thing, res["data"])
+
+            # Execute Gaffer insert
+            url = "/rest/v2/graph/operations/execute"
+            data = json.dumps(elts)
+            response = self.g.post(url, data)
+
+            # If status code is bad, fail
+            if response.status_code != 200:
+                print response.text
+
+            time.sleep(0.01)
 
