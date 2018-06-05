@@ -6,6 +6,10 @@ from virus_total_apis import PrivateApi as VirusTotalPrivateApi
 import threatgraph
 import time
 import datetime
+import hashlib
+
+# MD5 hash for URLs.
+hash = lambda x: hashlib.sha256(x).hexdigest()
 
 class Updater:
 
@@ -16,6 +20,9 @@ class Updater:
         self.probe = probe
         self.probe_time = probe_time
         self.probe_id = probe_id
+
+        # Seconds to wait between probes
+        self.sleep_time = 0.2
 
     def update(self):
 
@@ -38,7 +45,7 @@ class Updater:
             if response.status_code != 200:
                 print response.text
 
-            time.sleep(1)
+            time.sleep(self.sleep_time)
 
 class FacebookUpdater(Updater):
 
@@ -189,6 +196,10 @@ class VirusTotalUpdater(Updater):
         api_key = open("virustotal-key").read().lstrip().rstrip()
         self.vt = VirusTotalPrivateApi(api_key)
 
+        # Array of control characters and backslash.
+        self.cchars = dict.fromkeys(range(32))
+        self.cchars[ord('\\')] = None
+
     def vt_threats_to_elts(self, thing, dets):
 
         elts = []
@@ -200,10 +211,13 @@ class VirusTotalUpdater(Updater):
             tm = time.mktime(tm.timetuple())
 
             # Blacklist name
-            bl = "vt." + det["url"]
+            bl = "vt." + hash(det["url"])
+
+            url = det["url"].translate(self.cchars)
+            
             prob = 0.1
             id = det["url"]
-            desc = "VirusTotal hit on %s" % det["url"]
+            desc = "VirusTotal hit on %s" % url
             
             # Create a blacklist match edge
             elt = self.g.make_match_edge(thing, bl, id=id, description=desc,
@@ -243,7 +257,7 @@ class ApilityUpdater(Updater):
         u = ApilityUpdater("ap-dm-v0", probe_time, "apility-domain")
 
         u.fetcher = lambda self: self.g.get_unprobed_domains(self.probe)
-        u.chunk_size=5
+        u.chunk_size=10
 
         def reporter(self, chunk):
             # FIXME: Use batch
@@ -294,6 +308,9 @@ class ApilityUpdater(Updater):
         # Get Apility UUID and get connection
         uuid = open("apility-uuid").read().lstrip().rstrip()
         self.ap = apility.Apility(uuid)
+
+        # Seconds to wait between probes
+        self.sleep_time = 5
 
     def ap_threats_to_elts(self, rep):
 
@@ -365,6 +382,5 @@ class ApilityUpdater(Updater):
             if response.status_code != 200:
                 print response.text
 
-            time.sleep(2)
+            time.sleep(self.sleep_time)
 
-    
