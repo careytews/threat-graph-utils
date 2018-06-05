@@ -216,7 +216,7 @@ class VirusTotalUpdater(Updater):
             url = det["url"].translate(self.cchars)
             
             prob = 0.1
-            id = det["url"]
+            id = url
             desc = "VirusTotal hit on %s" % url
             
             # Create a blacklist match edge
