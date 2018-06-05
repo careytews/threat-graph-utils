@@ -313,7 +313,7 @@ class ApilityUpdater(Updater):
         self.ap = apility.Apility(uuid)
 
         # Seconds to wait between probes
-        self.sleep_time = 5
+        self.sleep_time = 2
 
     def ap_threats_to_elts(self, rep):
 
