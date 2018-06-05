@@ -260,7 +260,10 @@ class ApilityUpdater(Updater):
         u.chunk_size=10
 
         def reporter(self, chunk):
-            # FIXME: Use batch
+
+            # Remove domain names containing a slash.
+            chunk = [v for v in chunk if v.find('/') < 0]
+
             res = self.ap.get_domain_reputation(chunk)
             rep = {}
             for v in res:
@@ -283,7 +286,7 @@ class ApilityUpdater(Updater):
         u.chunk_size=20
 
         def reporter(self, chunk):
-            # FIXME: Use batch
+
             res = self.ap.get_ip_reputation(chunk)
             rep = {}
             for v in res:
