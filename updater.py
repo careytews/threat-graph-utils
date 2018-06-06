@@ -128,6 +128,11 @@ class FacebookUpdater(Updater):
             blres = self.fb.parse_threat(threat)
             bl, prob, id, desc, status, severity, pub = blres
 
+            bl = make_safe(bl)
+            id = make_safe(id)
+            desc = make_safe(desc)
+            pub = make_safe(pub)
+
             # Create a blacklist match edge
             elt = self.g.make_match_edge(thing, bl, id=id, description=desc,
                                          status=status, severity=severity)
@@ -230,7 +235,7 @@ class VirusTotalUpdater(Updater):
 
             prob = 0.1
             id = url
-            desc = "VirusTotal hit on %s" % url
+            desc = "VirusTotal scan of %s" % url
             
             # Create a blacklist match edge
             elt = self.g.make_match_edge(thing, bl, id=id, description=desc,
@@ -340,7 +345,7 @@ class ApilityUpdater(Updater):
             for bl in rep[thing]:
 
                 # Blacklist name
-                blacklist = "apility." + bl
+                blacklist = "apility." + make_safe(bl)
 
                 prob = self.ap.get_probability(bl)
 
