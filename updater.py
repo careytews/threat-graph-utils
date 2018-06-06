@@ -133,9 +133,9 @@ class FacebookUpdater(Updater):
                                          status=status, severity=severity)
             elts.append(elt)
 
-            print "Blacklist = ", bl
-            print "Probability = ", prob
-            print "Description = ", desc
+            print "  Blacklist = ", bl
+            print "  Probability = ", prob
+            print "  Description = ", desc
 
             # Create a blacklist entity (probably exists already)
             elt = self.g.make_blacklist_entity(bl, prob, self.tp, self.src,
@@ -211,7 +211,7 @@ class VirusTotalUpdater(Updater):
         elts = []
 
         for det in dets:
-            print det
+
             tm = det["scan_date"]
             tm = datetime.datetime.strptime(tm, "%Y-%m-%d %H:%M:%S")
             tm = time.mktime(tm.timetuple())
@@ -225,6 +225,8 @@ class VirusTotalUpdater(Updater):
             # real unicode.  Best to convert to printable, lossy but won't
             # break JSON encoding/decoding in Gaffer.
             url = make_safe(det["url"])
+            if len(url) > 100:
+                url = url[:100] + "..."
 
             prob = 0.1
             id = url
@@ -235,9 +237,9 @@ class VirusTotalUpdater(Updater):
                                          time=tm)
             elts.append(elt)
 
-            print "Blacklist = ", bl
-            print "Probability = ", prob
-            print "Description = ", desc
+            print "  Blacklist = ", bl
+            print "  Probability = ", prob
+            print "  Description = ", desc
 
             # Create a blacklist entity (probably exists already)
             elt = self.g.make_blacklist_entity(bl, prob, self.tp, self.src,
@@ -346,8 +348,8 @@ class ApilityUpdater(Updater):
                 elt = self.g.make_match_edge(thing, blacklist)
                 elts.append(elt)
 
-                print "Blacklist = ", bl
-                print "Probability = ", prob
+                print "  Blacklist = ", bl
+                print "  Probability = ", prob
 
                 # Create a blacklist entity (probably exists already)
                 elt = self.g.make_blacklist_entity(blacklist, prob, self.tp,
