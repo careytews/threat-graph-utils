@@ -11,6 +11,16 @@ import hashlib
 # MD5 hash for URLs.
 hash = lambda x: hashlib.sha256(x).hexdigest()
 
+# Turn a string into a form containing only ascii printable characters.
+def make_safe(x):
+    x2 = ""
+    for i in x:
+        if ord(i) < 32 or ord(i) > 127 or i == '\\':
+            x2 += "?"
+        else:
+            x2 += i
+    return x2
+
 class Updater:
 
     def __init__(self, probe, probe_time, probe_id):
@@ -196,10 +206,6 @@ class VirusTotalUpdater(Updater):
         api_key = open("virustotal-key").read().lstrip().rstrip()
         self.vt = VirusTotalPrivateApi(api_key)
 
-        # Array of control characters and backslash.
-        self.cchars = dict.fromkeys(range(32))
-        self.cchars[ord('\\')] = None
-
     def vt_threats_to_elts(self, thing, dets):
 
         elts = []
@@ -213,8 +219,8 @@ class VirusTotalUpdater(Updater):
             # Blacklist name
             bl = "vt." + hash(det["url"])
 
-            url = det["url"].translate(self.cchars)
-            
+            url = make_safe(url)
+
             prob = 0.1
             id = url
             desc = "VirusTotal hit on %s" % url
