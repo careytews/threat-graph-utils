@@ -219,7 +219,12 @@ class VirusTotalUpdater(Updater):
             # Blacklist name
             bl = "vt." + hash(det["url"])
 
-            url = make_safe(url)
+            # URLs are unicode at this point.  They should be printable
+            # strings, but for malicious applications may contain
+            # stuff designed to break the target application, so not even
+            # real unicode.  Best to convert to printable, lossy but won't
+            # break JSON encoding/decoding in Gaffer.
+            url = make_safe(det["url"])
 
             prob = 0.1
             id = url
