@@ -11,16 +11,6 @@ import hashlib
 # MD5 hash for URLs.
 hash = lambda x: hashlib.sha256(x).hexdigest()
 
-# Turn a string into a form containing only ascii printable characters.
-def make_safe(x):
-    x2 = ""
-    for i in x:
-        if ord(i) < 32 or ord(i) > 127 or i == '\\':
-            x2 += "?"
-        else:
-            x2 += i
-    return x2
-
 class Updater:
 
     def __init__(self, probe, probe_time, probe_id):
@@ -128,11 +118,6 @@ class FacebookUpdater(Updater):
             blres = self.fb.parse_threat(threat)
             bl, prob, id, desc, status, severity, pub = blres
 
-            bl = make_safe(bl)
-            id = make_safe(id)
-            desc = make_safe(desc)
-            pub = make_safe(pub)
-
             # Create a blacklist match edge
             elt = self.g.make_match_edge(thing, bl, id=id, description=desc,
                                          status=status, severity=severity)
@@ -224,18 +209,9 @@ class VirusTotalUpdater(Updater):
             # Blacklist name
             bl = "vt." + hash(det["url"])
 
-            # URLs are unicode at this point.  They should be printable
-            # strings, but for malicious applications may contain
-            # stuff designed to break the target application, so not even
-            # real unicode.  Best to convert to printable, lossy but won't
-            # break JSON encoding/decoding in Gaffer.
-            url = make_safe(det["url"])
-            if len(url) > 100:
-                url = url[:100] + "..."
-
             prob = 0.1
-            id = url
-            desc = "VirusTotal scan of %s" % url
+            id = det["url"]
+            desc = "VirusTotal scan of %s" % id
             
             # Create a blacklist match edge
             elt = self.g.make_match_edge(thing, bl, id=id, description=desc,
@@ -345,7 +321,7 @@ class ApilityUpdater(Updater):
             for bl in rep[thing]:
 
                 # Blacklist name
-                blacklist = "apility." + make_safe(bl)
+                blacklist = "apility." + bl
 
                 prob = self.ap.get_probability(bl)
 

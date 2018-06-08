@@ -62,22 +62,23 @@ class Gaffer:
                                  headers=headers)
         return res.json()
 
-    def post(self, path, data=None):
+    def post(self, path, data=None, stream=False):
         
         headers = { "Content-Type": "application/json" }
         url = self.url + path
   
         res = self.session.post(url,
                                 data=data,
-                                headers=headers)
+                                headers=headers,
+                                stream=stream)
 
         return res
 
-    def get(self, path):
+    def get(self, path, stream=False):
         
         headers = { "Content-Type": "application/json" }
         url = self.url + path
   
-        res = self.session.get(url)
+        res = self.session.get(url, stream=stream)
         return res
 
