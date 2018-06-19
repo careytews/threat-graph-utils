@@ -1,0 +1,41 @@
+#!/usr/bin/env python
+
+############################################################################
+# Fetch blacklist elements.
+############################################################################
+
+import json
+import pickle
+import gaffer
+
+gaffer_url = "https://analytics.trustnetworks.com/gaffer-threat"
+
+g = gaffer.Gaffer(gaffer_url)
+g.use_cert()
+
+op = g.get_all(entities=["blacklist"], edges=None)
+r = g.execute_chunked(op)
+
+blacklist = {}
+
+for v in r:
+
+    try:
+        obj = json.loads(v)
+    except:
+        # Ignore lines which don't parse as JSON
+        continue
+        
+    if obj["group"] == "blacklist":
+        vert = obj["vertex"]
+
+        blacklist[vert] = {
+            "probability": obj["properties"]["probability"],
+            "latest": obj["properties"]["update"]["uk.gov.gchq.gaffer.time.RBMBackedTimestampSet"]["latest"],
+            "source": obj["properties"]["source"]
+        }
+
+r.close()
+
+pickle.dump(blacklist, open("cache.BLACKLIST", "w"))
+

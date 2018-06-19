@@ -1,0 +1,43 @@
+#!/usr/bin/env python
+
+############################################################################
+# Fetch matches edges
+############################################################################
+
+import json
+import pickle
+import gaffer
+
+gaffer_url = "https://analytics.trustnetworks.com/gaffer-threat"
+
+g = gaffer.Gaffer(gaffer_url)
+g.use_cert()
+
+op = g.get_all(entities=None, edges=["matches"])
+r = g.execute_chunked(op)
+
+matches = {}
+
+for v in r:
+
+    try:
+        obj = json.loads(v)
+    except:
+        # Ignore lines which don't parse as JSON
+        continue
+
+    if obj["group"] == "matches":
+        src = obj["source"]
+        dest = obj["destination"]
+
+        if not matches.has_key(src):
+            matches[src] = []
+        matches[src].append({
+            "blacklist": dest,
+            "latest": obj["properties"]["time"]["uk.gov.gchq.gaffer.time.RBMBackedTimestampSet"]["latest"]
+        })
+
+r.close()
+
+pickle.dump(matches, open("cache.MATCH", "w"))
+
