@@ -13,21 +13,30 @@ from gaffer import Gaffer
 gr = sys.stdin.read()
 gr = json.loads(gr)
 
-query={
-    "class": "uk.gov.gchq.gaffer.operation.impl.add.AddElements",
-    "validate": True,
-    "skipInvalidElements": False,
-    "input": gr
-}
+
+# Function allows management in chunks
+def chunks(l, n):
+    l = list(l)
+    n = max(1, n)
+    return (l[i:i+n] for i in xrange(0, len(l), n))
 
 g = Gaffer("https://analytics.trustnetworks.com/gaffer-threat")
 g.use_cert()
-
 url = "/rest/v2/graph/operations/execute"
+        
+for i in chunks(gr, 500):
 
-res = g.post(url, data=json.dumps(query))
-print res.status_code
+    query={
+        "class": "uk.gov.gchq.gaffer.operation.impl.add.AddElements",
+        "validate": True,
+        "skipInvalidElements": False,
+        "input": i
+    }
 
+    
+    res = g.post(url, data=json.dumps(query))
+    print res.status_code
 
-print res.text
+    
+    print res.text
 
