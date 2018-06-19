@@ -26,14 +26,13 @@ for v in r:
         # Ignore lines which don't parse as JSON
         continue
         
-    if obj["group"] == "blacklist":
-        vert = obj["vertex"]
+    vert = obj["vertex"]
 
-        blacklist[vert] = {
-            "probability": obj["properties"]["probability"],
-            "latest": obj["properties"]["update"]["uk.gov.gchq.gaffer.time.RBMBackedTimestampSet"]["latest"],
-            "source": obj["properties"]["source"]
-        }
+    blacklist[vert] = {
+        "probability": obj["properties"]["probability"],
+        "latest": obj["properties"]["update"]["uk.gov.gchq.gaffer.time.RBMBackedTimestampSet"]["latest"],
+        "source": obj["properties"]["source"]
+    }
 
 r.close()
 

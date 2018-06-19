@@ -5,40 +5,22 @@
 # Runs GetElements to perform a query, and then uses Limit to restrict the
 # data set to 15.
 
-import requests
-import json
-import sys
 from gaffer import Gaffer
 
-query = {
-    "class": "uk.gov.gchq.gaffer.operation.OperationChain",
-    "operations": [
-        {
-            "class": "uk.gov.gchq.gaffer.operation.impl.get.GetAllElements",
-            "view": {
-                "edges": {},
-                "entities": {}
-            }
-        }
-    ]
-}
-
 g = Gaffer("https://analytics.trustnetworks.com/gaffer-threat")
-# g = Gaffer("http://localhost:8080")
 g.use_cert()
-
-url = "/rest/v2/graph/operations/execute/chunked"
-  
-res = g.post(url, data=json.dumps(query), stream=True)
+op = g.get_all()
+ops = g.operation_list([op])
+res = g.execute_chunked(ops)
 
 print "["
 
 sep=""
 
 i = 0
-for v in res.iter_lines():
+for v in res:
 
-#     if v == "": continue
+    if v == "": continue
 
     print sep
     sep =","

@@ -26,16 +26,15 @@ for v in r:
         # Ignore lines which don't parse as JSON
         continue
 
-    if obj["group"] == "matches":
-        src = obj["source"]
-        dest = obj["destination"]
-
-        if not matches.has_key(src):
-            matches[src] = []
-        matches[src].append({
-            "blacklist": dest,
-            "latest": obj["properties"]["time"]["uk.gov.gchq.gaffer.time.RBMBackedTimestampSet"]["latest"]
-        })
+    src = obj["source"]
+    dest = obj["destination"]
+    
+    if not matches.has_key(src):
+        matches[src] = []
+    matches[src].append({
+        "blacklist": dest,
+        "latest": obj["properties"]["time"]["uk.gov.gchq.gaffer.time.RBMBackedTimestampSet"]["latest"]
+    })
 
 r.close()
 

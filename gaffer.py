@@ -45,17 +45,20 @@ class Gaffer:
         self.session.verify = (ca)
 
     def get_all(self, entities=[], edges=[]):
-        return {
+        op = {
             "class" : "uk.gov.gchq.gaffer.operation.impl.get.GetAllElements",
             "view": {
-                "entities": {
-                    group: {} for group in entities
-                },
-                "edges": {
-                    group: {} for group in edges
-                }
             }
         }
+        if entities != None:
+            op["view"]["entities"] = {
+                group: {} for group in entities
+            }
+        if edges != None:
+            op["view"]["edges"] = {
+                group: {} for group in edges
+            }
+        return op
 
     def limit(self, lim):
         return {
@@ -82,6 +85,20 @@ class Gaffer:
         
         return res.json()
 
+    def execute_chunked(self, ops):
+        url = self.url + "/rest/v2/graph/operations/execute/chunked"
+
+        headers = { "Content-Type": "application/json" }
+
+        res = self.session.post(url,
+                                 data=json.dumps(ops),
+                                 headers=headers, stream=True)
+
+        if res.status_code != 200:
+            raise GafferError("Status %d" % res.status_code)
+
+        return res.iter_lines()
+
     def post(self, path, data=None, stream=False):
         
         headers = { "Content-Type": "application/json" }
@@ -91,7 +108,6 @@ class Gaffer:
                                 data=data,
                                 headers=headers,
                                 stream=stream)
-
 
         if res.status_code != 200:
             raise GafferError("Status %d" % res.status_code)
