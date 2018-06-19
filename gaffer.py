@@ -3,6 +3,22 @@ import os
 import requests
 import json
 
+class Error(Exception):
+    """Base class for exceptions in this module."""
+    pass
+
+class GafferError(Error):
+    """Exception raised for errors in the input.
+
+    Attributes:
+        message -- explanation of the error
+    """
+    def __init__(self, message):
+        self.message = message
+
+    def __str__(self):
+        return self.message
+
 class Gaffer:
 
     def __init__(self, url=None):
@@ -60,6 +76,10 @@ class Gaffer:
         res = self.session.post(url,
                                  data=json.dumps(ops),
                                  headers=headers)
+
+        if res.status_code != 200:
+            raise GafferError("Status %d" % res.status_code)
+        
         return res.json()
 
     def post(self, path, data=None, stream=False):
@@ -72,6 +92,10 @@ class Gaffer:
                                 headers=headers,
                                 stream=stream)
 
+
+        if res.status_code != 200:
+            raise GafferError("Status %d" % res.status_code)
+        
         return res
 
     def get(self, path, stream=False):
@@ -80,5 +104,9 @@ class Gaffer:
         url = self.url + path
   
         res = self.session.get(url, stream=stream)
+
+        if res.status_code != 200:
+            raise GafferError("Status %d" % res.status_code)
+        
         return res
 
