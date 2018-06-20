@@ -13,7 +13,7 @@ gaffer_url = "https://analytics.trustnetworks.com/gaffer-threat"
 g = gaffer.Gaffer(gaffer_url)
 g.use_cert()
 
-op = g.get_all(entities=["blacklist"], edges=None)
+op = gaffer.GetAllElements(entities=["blacklist"], edges=None)
 r = g.execute_chunked(op)
 
 blacklist = {}
