@@ -11,43 +11,16 @@ class Gaffer(gaffer.Gaffer):
         self.use_cert()
 
     def get_all_ips(self):
-        query = {
-            "class": "uk.gov.gchq.gaffer.operation.OperationChain",
-            "operations": [
-                {
-                    "class": "uk.gov.gchq.gaffer.operation.impl.get.GetAllElements",
-                    "view": {
-                        "entities": {
-                            "ip": {
-                            }
-                        }
-                    }
-                }
-            ]
-        }
-
-        res = self.execute(query)
+        op = gaffer.GetAllElements(entities=["ip"], edges=None)
+        res = self.execute(op)
         ips = sets.Set([v["vertex"] for v in res])
 
         return ips
 
     def get_all_domains(self):
-        query = {
-            "class": "uk.gov.gchq.gaffer.operation.OperationChain",
-            "operations": [
-                {
-                    "class": "uk.gov.gchq.gaffer.operation.impl.get.GetAllElements",
-                    "view": {
-                        "entities": {
-                            "domain": {
-                            }
-                        }
-                    }
-                }
-            ]
-        }
 
-        res = self.execute(query)
+        op = gaffer.GetAllElements(entities=["domain"], edges=None)
+        res = self.execute(op)
         domains = sets.Set([v["vertex"] for v in res])
 
         return domains

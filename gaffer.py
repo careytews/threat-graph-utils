@@ -189,12 +189,16 @@ class Gaffer:
         }
 
     def execute(self, ops):
+
+        if type(ops) == dict:
+            data = json.dumps(ops)
+        else:
+            data=json.dumps(ops.encode())
+                            
         url = self.url + "/rest/v2/graph/operations/execute"
 
         headers = { "Content-Type": "application/json" }
-        res = self.session.post(url,
-                                 data=json.dumps(ops.encode()),
-                                 headers=headers)
+        res = self.session.post(url, data, headers=headers)
 
         if res.status_code != 200:
             raise GafferError("Status %d: %s" % (res.status_code, res.text))
@@ -202,13 +206,17 @@ class Gaffer:
         return res.json()
 
     def execute_chunked(self, ops):
+
+        if type(ops) == dict:
+            data = json.dumps(ops)
+        else:
+            data=json.dumps(ops.encode())
+
         url = self.url + "/rest/v2/graph/operations/execute/chunked"
 
         headers = { "Content-Type": "application/json" }
 
-        res = self.session.post(url,
-                                 data=json.dumps(ops.encode()),
-                                 headers=headers, stream=True)
+        res = self.session.post(url, data, headers=headers, stream=True)
 
         if res.status_code != 200:
             raise GafferError("Status %d: %s" % (res.status_code, res.text))

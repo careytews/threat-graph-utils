@@ -20,7 +20,7 @@ op = gaffer.OperationChain([
             gaffer.OperationChain(operations=[
                 gaffer.GetElements(edges=[
                     gaffer.ViewGroup("dns", exclude=["count", "time"])
-                ], entities=None, include="OUTGOING")
+                ], entities=None, include="INCOMING")
             ]),
             gaffer.OperationChain(operations=[
                 gaffer.GetElements(edges=[
@@ -37,6 +37,8 @@ op = gaffer.OperationChain([
 ])
 
 res = g.execute(op)
+
+print len(res)
 
 data = [
     [ent["entities"][0].keys()[0], ent["entities"][1].keys()[0],
