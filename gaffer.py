@@ -19,6 +19,135 @@ class GafferError(Error):
     def __str__(self):
         return self.message
 
+class ViewGroup:
+    def __init__(self, name, exclude=None):
+        self.name=name
+        self.exclude=exclude
+
+    def encode(self):
+        obj = {self.name: {}}
+        if obj != None:
+            obj[self.name]["excludeProperties"] = self.exclude
+        return obj
+
+            
+class GetAllElements:
+
+    ALL=[]
+    NONE=None
+    
+    def __init__(self, entities=ALL, edges=ALL):
+        self.entities = entities
+        self.edges = edges
+
+    def encode_group(self, g):
+        if type(g) == str:
+            return {g: {}}
+        if type(g) == unicode:
+            return {g: {}}
+        if isinstance(g, ViewGroup):
+            return g.encode()
+        raise TypeError, "Needs to be string, unicode or GroupView"
+        
+    def encode(self):
+        op = {
+            "class" : "uk.gov.gchq.gaffer.operation.impl.get.GetAllElements",
+            "view": {
+            }
+        }
+        if self.entities != None:
+            op["view"]["entities"] = {}
+            for group in self.entities:
+                op["view"]["entities"] = dict(op["view"]["entities"], **self.encode_group(group))
+        if self.edges != None:
+            op["view"]["edges"] = {}
+            for group in self.edges:
+                op["view"]["edges"] = dict(op["view"]["edges"], **self.encode_group(group))
+        return op
+    
+    def set_entities(self, entities=ALL):
+        self.entities=entities
+    
+    def set_edges(self, edges=ALL):
+        self.edges=edges
+
+class GetElements:
+
+    ALL=[]
+    NONE=None
+    
+    def __init__(self, entities=ALL, edges=ALL, include="EITHER"):
+        self.entities = entities
+        self.edges = edges
+        self.include = include
+
+    def encode_group(self, g):
+        if type(g) == str:
+            return {g: {}}
+        if type(g) == unicode:
+            return {g: {}}
+        if isinstance(g, ViewGroup):
+            return g.encode()
+        raise TypeError, "Needs to be string, unicode or GroupView"
+    
+    def encode(self):
+        op = {
+            "class" : "uk.gov.gchq.gaffer.operation.impl.get.GetElements",
+            "view": {
+            },
+            "includeIncomingOutGoing": self.include
+        }
+        if self.entities != None:
+            op["view"]["entities"] = {}
+            for group in self.entities:
+                op["view"]["entities"] = dict(op["view"]["entities"], **self.encode_group(group))
+        if self.edges != None:
+            op["view"]["edges"] = {}
+            for group in self.edges:
+                op["view"]["edges"] = dict(op["view"]["edges"], **self.encode_group(group))
+        return op
+    
+    def set_entities(self, entities=ALL):
+        self.entities=entities
+    
+    def set_edges(self, edges=ALL):
+        self.edges=edges
+
+class OperationChain:
+
+    def __init__(self, operations=[]):
+        self.operations = operations
+
+    def encode(self):
+        return {
+            "class": "uk.gov.gchq.gaffer.operation.OperationChain",
+            "operations": [ op.encode() for op in self.operations ]
+        }
+    
+    def add(self, op):
+        self.operations.append(op)
+
+class GetWalks:
+
+    def __init__(self, operations=[], limit=None):
+        self.operations = operations
+        self.limit = limit
+
+    def encode(self):
+        op = {
+            "class": "uk.gov.gchq.gaffer.operation.impl.GetWalks",
+            "operations": [v.encode() for v in self.operations]
+        }
+        if self.limit != None:
+            op["resultsLimit"] = self.limit
+        return op
+    
+    def add(self, op):
+        self.operations.append(op)
+
+    def set_limit(self, limit):
+        self.limit = limit
+
 class Gaffer:
 
     def __init__(self, url=None):
@@ -45,20 +174,7 @@ class Gaffer:
         self.session.verify = (ca)
 
     def get_all(self, entities=[], edges=[]):
-        op = {
-            "class" : "uk.gov.gchq.gaffer.operation.impl.get.GetAllElements",
-            "view": {
-            }
-        }
-        if entities != None:
-            op["view"]["entities"] = {
-                group: {} for group in entities
-            }
-        if edges != None:
-            op["view"]["edges"] = {
-                group: {} for group in edges
-            }
-        return op
+        return GetAll(entities, edges)
 
     def limit(self, lim):
         return {
@@ -77,11 +193,11 @@ class Gaffer:
 
         headers = { "Content-Type": "application/json" }
         res = self.session.post(url,
-                                 data=json.dumps(ops),
+                                 data=json.dumps(ops.encode()),
                                  headers=headers)
 
         if res.status_code != 200:
-            raise GafferError("Status %d" % res.status_code)
+            raise GafferError("Status %d: %s" % (res.status_code, res.text))
         
         return res.json()
 
@@ -91,11 +207,11 @@ class Gaffer:
         headers = { "Content-Type": "application/json" }
 
         res = self.session.post(url,
-                                 data=json.dumps(ops),
+                                 data=json.dumps(ops.encode()),
                                  headers=headers, stream=True)
 
         if res.status_code != 200:
-            raise GafferError("Status %d" % res.status_code)
+            raise GafferError("Status %d: %s" % (res.status_code, res.text))
 
         return res.iter_lines()
 
@@ -110,7 +226,7 @@ class Gaffer:
                                 stream=stream)
 
         if res.status_code != 200:
-            raise GafferError("Status %d" % res.status_code)
+            raise GafferError("Status %d: %s" % (res.status_code, res.text))
         
         return res
 
@@ -122,7 +238,7 @@ class Gaffer:
         res = self.session.get(url, stream=stream)
 
         if res.status_code != 200:
-            raise GafferError("Status %d" % res.status_code)
+            raise GafferError("Status %d: %s" % (res.status_code, res.text))
         
         return res
 

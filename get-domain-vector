@@ -1,0 +1,156 @@
+#!/usr/bin/env python
+
+# Displays ...
+
+# Runs GetElements to perform a query, and then uses Limit to restrict the
+# data set to 15.
+
+import requests
+import json
+import pickle
+import sys
+import gaffer
+from tabulate import tabulate
+from sets import Set
+import time
+import hashlib
+import pandas as pd
+
+gaffer_url = "https://analytics.trustnetworks.com/gaffer-threat"
+
+g = gaffer.Gaffer(gaffer_url)
+g.use_cert()
+
+
+############################################################################
+# Execute a Gaffer query in chunked mode and return a line iterator.
+############################################################################
+
+def execute_query(g, query):
+    url = "/rest/v2/graph/operations/execute/chunked"
+    res = g.post(url, data=json.dumps(query), stream=True)
+    return res.iter_lines()
+
+
+############################################################################
+# Fetch matches edges and blacklist elements.
+############################################################################
+
+hash = lambda x: hashlib.md5(x).hexdigest()
+
+def make_sbl(x):
+    a = x.split(".")
+    if a[0] == "vt":
+        return "vt." + a[1][0:2]
+    if a[0] == "facebook":
+        return "fb." + hash(a[1])[0:4] + "." + a[2]
+    return a[0] + "." + a[1][0:6] + hash(a[1])[0:2]
+
+matches = pickle.load(open("cache.MATCH"))
+blacklist = pickle.load(open("cache.BLACKLIST"))
+
+# Going to hash the blacklist names because there are many of them, so
+# collapse names by 
+sbls=[make_sbl(v) for v in blacklist]
+sbls=sorted(Set(sbls))
+
+sbls={sbls[i]: i for i in range(0, len(sbls))}
+
+
+############################################################################
+# Fetch device -> IP -> DNS query -> domain edges
+############################################################################
+
+op = gaffer.OperationChain([
+    gaffer.GetAllElements(entities=[
+        gaffer.ViewGroup("device", exclude=["count", "time"])
+    ], edges=None),
+    gaffer.GetWalks(
+        operations=[
+            gaffer.OperationChain(operations=[
+                gaffer.GetElements(edges=[
+                    gaffer.ViewGroup("hasip", exclude=["count", "time"])
+                ], entities=None, include="OUTGOING")
+            ]), 
+            gaffer.OperationChain(operations=[
+                gaffer.GetElements(edges=[
+                    gaffer.ViewGroup("dnsquery", exclude=["count", "time"])
+                ], entities=None, include="OUTGOING")
+            ]), 
+            gaffer.OperationChain(operations=[
+                gaffer.GetElements(edges=[
+                    gaffer.ViewGroup("indomain", exclude=["count", "time"])
+                ], entities=None, include="OUTGOING")
+            ])
+        ],
+        limit=1000000)
+])
+
+query = op.encode()
+
+url = "/rest/v2/graph/operations/execute/chunked"
+
+res = g.execute_chunked(op)
+
+obs = Set()
+
+for v in res:
+
+    try:
+        ent = json.loads(v)
+
+    except Exception, e:
+        continue
+
+    dev = ent["entities"][0].keys()[0]
+    domain = ent["entities"][3].keys()[0]
+
+    obs.add((dev, domain))
+
+datas = []
+
+for v in obs:
+
+    dev, domain = v
+
+    data = [dev, domain]
+    
+    blacks = [0.0 for i in range(0, len(sbls))]
+        
+    if matches.has_key(domain):
+
+        for v2 in matches[domain]:
+            
+            bl = v2["blacklist"]
+            sbl = make_sbl(bl)
+            thing_latest = v2["latest"]
+            source = blacklist[bl]["source"]
+            blocklist_latest = blacklist[bl]["latest"]
+            prob = blacklist[bl]["probability"]
+
+            blocklist_decay_period = 86400 * 360
+            blocklist_age = time.time() - blocklist_latest
+            blocklist_factor = blocklist_decay_period - blocklist_age
+            blocklist_factor /= blocklist_decay_period
+            if blocklist_factor < 0: blocklist_factor = 0
+
+            thing_decay_period = 86400 * 14
+            thing_age = time.time() - thing_latest
+            thing_factor = thing_decay_period - thing_age
+            thing_factor /= thing_decay_period
+            if thing_factor < 0: thing_factor = 0
+            
+            prob = prob * thing_factor * blocklist_factor
+
+            prob = 1.0 - ((1.0 - blacks[sbls[sbl]]) * (1.0 - prob))
+            blacks[sbls[sbl]] = prob
+
+    data = data + blacks
+    datas.append(data)
+
+df = pd.DataFrame(datas,
+                  columns=["device", "domain"] + sbls.keys())
+
+print df
+pickle.dump(df, open("vector.DOMAINS", "w"))
+

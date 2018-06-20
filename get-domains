@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 
 import json
-from gaffer import Gaffer
+import gaffer
 
 gaffer_url = "https://analytics.trustnetworks.com/gaffer-threat"
 
-g = Gaffer(gaffer_url)
+g = gaffer.Gaffer(gaffer_url)
 g.use_cert()
 
-op = g.get_all(entities=["domain"], edges=None)
+op = gaffer.GetAllElements(entities=[gaffer.ViewGroup("domain")], edges=None)
 r = g.execute_chunked(op)
 
 for v in r:

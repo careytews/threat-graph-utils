@@ -5,13 +5,13 @@
 # Runs GetElements to perform a query, and then uses Limit to restrict the
 # data set to 15.
 
-from gaffer import Gaffer
+import gaffer
 
-g = Gaffer("https://analytics.trustnetworks.com/gaffer-threat")
+g = gaffer.Gaffer("https://analytics.trustnetworks.com/gaffer-threat")
 g.use_cert()
-op = g.get_all()
-ops = g.operation_list([op])
-res = g.execute_chunked(ops)
+
+op = gaffer.GetAllElements()
+res = g.execute_chunked(op)
 
 print "["
 

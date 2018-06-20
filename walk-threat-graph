@@ -1,111 +1,40 @@
 #!/usr/bin/env python
 
-# Displays ...
-
-# Runs GetElements to perform a query, and then uses Limit to restrict the
-# data set to 15.
-
-import requests
-import json
-import sys
-from gaffer import Gaffer
+import gaffer
 from tabulate import tabulate
 
-query = {
-    "class": "uk.gov.gchq.gaffer.operation.OperationChain",
-    "operations": [
-        {
-            "class": "uk.gov.gchq.gaffer.operation.impl.get.GetAllElements",
-            "view": {
-                "entities": {
-                    "ip": {
-                        "excludeProperties" : [ "count", "time" ]
-                    }
-                }
-            }
-            
-        },
-        {
-            "class" : "uk.gov.gchq.gaffer.operation.impl.GetWalks",
-            "operations" : [
-                {
-                    "class" : "uk.gov.gchq.gaffer.operation.OperationChain",
-                    "operations" : [
-                        {
-                            "class" : "uk.gov.gchq.gaffer.operation.impl.get.GetElements",
-                            "includeIncomingOutGoing" : "OUTGOING",
-                            "view": {
-                                "edges": {
-                                    "ipflow": {
-                                        "excludeProperties" : [ "count", "time" ]
-                                    }
-                                }
-                            }
-                        }
-                    ]
-                },
-                {
-                    "class" : "uk.gov.gchq.gaffer.operation.OperationChain",
-                    "operations" : [
-                        {
-                            "class" : "uk.gov.gchq.gaffer.operation.impl.get.GetElements",
-                            "includeIncomingOutGoing" : "OUTGOING",
-                            "view": {
-                                "edges": {
-                                    "serves": {
-                                        "excludeProperties" : [ "count", "time" ]
-                                    }
-                                }
-                            }
-                        }
-                    ]
-                },
-                {
-                    "class" : "uk.gov.gchq.gaffer.operation.OperationChain",
-                    "operations" : [
-                        {
-                            "class" : "uk.gov.gchq.gaffer.operation.impl.get.GetElements",
-                            "includeIncomingOutGoing" : "OUTGOING",
-                            "view": {
-                                "edges": {
-                                    "indomain": {
-                                        "excludeProperties" : [ "count", "time" ]
-                                    }
-                                }
-                            }
-                        }
-                    ]
-                },
-                {
-                    "class" : "uk.gov.gchq.gaffer.operation.OperationChain",
-                    "operations" : [
-                        {
-                            "class" : "uk.gov.gchq.gaffer.operation.impl.get.GetElements",
-                            "includeIncomingOutGoing" : "OUTGOING",
-                            "view": {
-                                "edges": {
-                                    "matches": {
-                                        "excludeProperties" : [ "count", "time" ]
-                                    }
-                                }
-                            }
-                        }
-                    ]
-                }
-            ],
-            "resultsLimit" : 1000000
-        }
-        
-  ]
-}
-
-g = Gaffer("https://analytics.trustnetworks.com/gaffer-threat")
+g = gaffer.Gaffer("https://analytics.trustnetworks.com/gaffer-threat")
 g.use_cert()
 
-url = "/rest/v2/graph/operations/execute"
+op = gaffer.OperationChain([
+    gaffer.GetAllElements(entities=["ip"], edges=None),
+    gaffer.GetWalks(
+        operations=[
+            gaffer.OperationChain(operations=[
+                gaffer.GetElements(edges=[
+                    gaffer.ViewGroup("ipflow", exclude=["count", "time"])
+                ], entities=None, include="OUTGOING")
+            ]),
+            gaffer.OperationChain(operations=[
+                gaffer.GetElements(edges=[
+                    gaffer.ViewGroup("serves", exclude=["count", "time"])
+                ], entities=None, include="OUTGOING")
+            ]),
+            gaffer.OperationChain(operations=[
+                gaffer.GetElements(edges=[
+                    gaffer.ViewGroup("indomain", exclude=["count", "time"])
+                ], entities=None, include="OUTGOING")
+            ]),
+            gaffer.OperationChain(operations=[
+                gaffer.GetElements(edges=[
+                    gaffer.ViewGroup("matches", exclude=["count", "time"])
+                ], entities=None, include="OUTGOING")
+            ])
+        ],
+        limit=1000000)
+])
 
-res = g.post(url, data=json.dumps(query))
-res = res.json()
+res = g.execute(op)
 
 data = [
     [ent["entities"][0].keys()[0], ent["entities"][1].keys()[0],
