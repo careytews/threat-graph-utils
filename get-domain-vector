@@ -42,9 +42,7 @@ def make_sbl(x):
     a = x.split(".")
     if a[0] == "vt":
         return "vt." + a[1][0:2]
-    if a[0] == "facebook":
-        return "fb." + hash(a[1])[0:4] + "." + a[2]
-    return a[0] + "." + a[1][0:6] + hash(a[1])[0:2]
+    return x
 
 matches = pickle.load(open("cache.MATCH"))
 blacklist = pickle.load(open("cache.BLACKLIST"))

@@ -4,5 +4,12 @@ import pickle
 import pandas as pd
 
 obj = pickle.load(open("vector.DOMAINS"))
-print obj
 
+for index, row in obj.iterrows():
+    device = row["device"]
+    domain = row["domain"]
+    bls = []
+    for i in range(2, len(row)):
+        if row[i] != 0:
+            bls.append("%s=%2.2f" % (obj.columns[i], row[i]))
+    print "%-20s %-30s %s" % (device, domain, " ".join(bls))

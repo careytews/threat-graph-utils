@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import gaffer
-from tabulate import tabulate
+import json
 
 g = gaffer.Gaffer("https://analytics.trustnetworks.com/gaffer-threat")
 g.use_cert()
@@ -34,14 +34,25 @@ op = gaffer.OperationChain([
         limit=1000000)
 ])
 
-res = g.execute(op)
+res = g.execute_chunked(op)
 
-data = [
-    [ent["entities"][0].keys()[0], ent["entities"][1].keys()[0],
-     ent["entities"][2].keys()[0], ent["entities"][3].keys()[0],
-     ent["entities"][4].keys()[0]]
-    for ent in res
-]
+for ent in res:
 
-print tabulate(data, headers=["src", "dest", "server", "domain", "block"])
+    print ent
+
+    try:
+        ent = json.loads(ent)
+        print ent
+    except:
+        continue
+
+    src = ent["entities"][0].keys()[0]
+    dest = ent["entities"][1].keys()[0]
+    server = ent["entities"][2].keys()[0]
+    domain = ent["entities"][3].keys()[0]
+    blacklist = ent["entities"][4].keys()[0]
+
+    print "%-15s %-15s %-20s %-20s %s" % (
+        src, dest, server[:20], domain[:20], blacklist
+    )
 
