@@ -149,6 +149,8 @@ for v in obs:
 df = pd.DataFrame(datas,
                   columns=["device", "domain"] + sbls.keys())
 
+df = df.set_index(["device", "domain"])
+
 print df
 pickle.dump(df, open("vector.DOMAINS", "w"))
 
