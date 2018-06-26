@@ -5,13 +5,11 @@
 # Runs GetElements to perform a query, and then uses Limit to restrict the
 # data set to 15.
 
-import requests
 import json
 import pickle
 import sys
 import gaffer
 from tabulate import tabulate
-from sets import Set
 import time
 import hashlib
 import pandas as pd
@@ -20,16 +18,6 @@ gaffer_url = "https://analytics.trustnetworks.com/gaffer-threat"
 
 g = gaffer.Gaffer(gaffer_url)
 g.use_cert()
-
-
-############################################################################
-# Execute a Gaffer query in chunked mode and return a line iterator.
-############################################################################
-
-def execute_query(g, query):
-    url = "/rest/v2/graph/operations/execute/chunked"
-    res = g.post(url, data=json.dumps(query), stream=True)
-    return res.iter_lines()
 
 
 ############################################################################
@@ -50,7 +38,7 @@ blacklist = pickle.load(open("cache.BLACKLIST"))
 # Going to hash the blacklist names because there are many of them, so
 # collapse names by 
 sbls=[make_sbl(v) for v in blacklist]
-sbls=sorted(Set(sbls))
+sbls=sorted(set(sbls))
 
 sbls={sbls[i]: i for i in range(0, len(sbls))}
 
@@ -72,7 +60,7 @@ op = gaffer.OperationChain([
             ]), 
             gaffer.OperationChain(operations=[
                 gaffer.GetElements(edges=[
-                    gaffer.ViewGroup("dnsquery", exclude=["count", "time"])
+                    gaffer.ViewGroup("dnsquery")
                 ], entities=None, include="OUTGOING")
             ]), 
             gaffer.OperationChain(operations=[
@@ -81,7 +69,7 @@ op = gaffer.OperationChain([
                 ], entities=None, include="OUTGOING")
             ])
         ],
-        limit=1000000)
+        limit=10000000)
 ])
 
 query = op.encode()
@@ -90,7 +78,12 @@ url = "/rest/v2/graph/operations/execute/chunked"
 
 res = g.execute_chunked(op)
 
-obs = Set()
+############################################################################
+# Process graph output, construct a map of
+#   (device, domain) -> {timestamp set}
+############################################################################
+
+obs = {}
 
 for v in res:
 
@@ -102,16 +95,58 @@ for v in res:
 
     dev = ent["entities"][0].keys()[0]
     domain = ent["entities"][3].keys()[0]
+    k = (dev, domain)
 
-    obs.add((dev, domain))
+    if not obs.has_key(k):
+        obs[k] = set()
+
+    ts = ent["edges"][1][0]["properties"]["time"]["uk.gov.gchq.gaffer.time.RBMBackedTimestampSet"]["timestamps"]
+    obs[k].update(ts)
+
+############################################################################
+# Work out the earliest and latest timestamps.
+############################################################################
+
+smallest=None
+largest=None
+for v in obs:
+
+    if smallest == None:
+        smallest = min(obs[v])
+    else:
+        smallest = min(smallest, min(obs[v]))
+
+    if largest == None:
+        largest = max(obs[v])
+    else:
+        largest = max(largest, max(obs[v]))
+
+############################################################################
+# Construct domain vector:
+#   device, domain, earliest timestamp, latest, largest gap, blacklists...
+############################################################################
+
+# Takes a timestamp set and returns the largest distance between two adjacent
+# elements.
+
+def gap(s):
+    last = min(s)
+    gap = 0
+    for v in sorted(s):
+        gap = max(gap, v - last)
+        last = v
+    return gap
 
 datas = []
 
 for v in obs:
 
     dev, domain = v
+    tss = obs[v]
+    tss2 = tss.union(set([smallest, largest]))
+    biggest_gap = gap(tss2)
 
-    data = [dev, domain]
+    data = [dev, domain, min(tss), max(tss), biggest_gap]
     
     blacks = [0.0 for i in range(0, len(sbls))]
         
@@ -147,7 +182,7 @@ for v in obs:
     datas.append(data)
 
 df = pd.DataFrame(datas,
-                  columns=["device", "domain"] + sbls.keys())
+                  columns=["device", "domain", "first", "last", "gap"] + sbls.keys())
 
 df = df.set_index(["device", "domain"])
 
