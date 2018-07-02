@@ -40,7 +40,7 @@ blacklist = pickle.load(open("cache.BLACKLIST"))
 sbls=[make_sbl(v) for v in blacklist]
 sbls=sorted(set(sbls))
 
-sbls={sbls[i]: i for i in range(0, len(sbls))}
+sbls_ix={sbls[i]: i for i in range(0, len(sbls))}
 
 
 ############################################################################
@@ -83,7 +83,8 @@ res = g.execute_chunked(op)
 #   (device, domain) -> {timestamp set}
 ############################################################################
 
-obs = {}
+timestamps = {}
+counts = {}
 
 for v in res:
 
@@ -97,11 +98,15 @@ for v in res:
     domain = ent["entities"][3].keys()[0]
     k = (dev, domain)
 
-    if not obs.has_key(k):
-        obs[k] = set()
+    if not counts.has_key(k):
+        counts[k] = 0
+        timestamps[k] = set()
 
     ts = ent["edges"][1][0]["properties"]["time"]["uk.gov.gchq.gaffer.time.RBMBackedTimestampSet"]["timestamps"]
-    obs[k].update(ts)
+    cnt = ent["edges"][1][0]["properties"]["count"]
+
+    counts[k] += cnt
+    timestamps[k].update(ts)
 
 ############################################################################
 # Work out the earliest and latest timestamps.
@@ -109,17 +114,20 @@ for v in res:
 
 smallest=None
 largest=None
-for v in obs:
+for v in timestamps:
 
     if smallest == None:
-        smallest = min(obs[v])
+        smallest = min(timestamps[v])
     else:
-        smallest = min(smallest, min(obs[v]))
+        smallest = min(smallest, min(timestamps[v]))
 
     if largest == None:
-        largest = max(obs[v])
+        largest = max(timestamps[v])
     else:
-        largest = max(largest, max(obs[v]))
+        largest = max(largest, max(timestamps[v]))
+
+print smallest
+print largest
 
 ############################################################################
 # Construct domain vector:
@@ -139,14 +147,15 @@ def gap(s):
 
 datas = []
 
-for v in obs:
+for v in counts:
 
     dev, domain = v
-    tss = obs[v]
+    tss = timestamps[v]
+    cnt = counts[v]
     tss2 = tss.union(set([smallest, largest]))
     biggest_gap = gap(tss2)
 
-    data = [dev, domain, min(tss), max(tss), biggest_gap]
+    data = [dev, domain, min(tss), max(tss), biggest_gap, cnt]
     
     blacks = [0.0 for i in range(0, len(sbls))]
         
@@ -175,17 +184,17 @@ for v in obs:
             
             prob = prob * thing_factor * blocklist_factor
 
-            prob = 1.0 - ((1.0 - blacks[sbls[sbl]]) * (1.0 - prob))
-            blacks[sbls[sbl]] = prob
+            prob = 1.0 - ((1.0 - blacks[sbls_ix[sbl]]) * (1.0 - prob))
+            blacks[sbls_ix[sbl]] = prob
 
     data = data + blacks
     datas.append(data)
 
-df = pd.DataFrame(datas,
-                  columns=["device", "domain", "first", "last", "gap"] + sbls.keys())
+cols = ["device", "domain", "first", "last", "gap", "count"] + sbls
+df = pd.DataFrame(datas, columns=cols)
 
 df = df.set_index(["device", "domain"])
 
-print df
+# print df
 pickle.dump(df, open("vector.DOMAINS", "w"))
 
