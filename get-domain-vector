@@ -175,7 +175,7 @@ for v in counts:
             blocklist_factor /= blocklist_decay_period
             if blocklist_factor < 0: blocklist_factor = 0
 
-            thing_decay_period = 86400 * 14
+            thing_decay_period = 86400 * 28
             thing_age = time.time() - thing_latest
             thing_factor = thing_decay_period - thing_age
             thing_factor /= thing_decay_period
