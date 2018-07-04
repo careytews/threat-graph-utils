@@ -1,0 +1,194 @@
+#!/usr/bin/env python3
+
+# Displays ...
+
+# Runs GetElements to perform a query, and then uses Limit to restrict the
+# data set to 15.
+
+import json
+import pickle
+import sys
+import gaffer
+from tabulate import tabulate
+import time
+import hashlib
+import pandas as pd
+
+gaffer_url = "https://analytics.trustnetworks.com/gaffer-threat"
+
+g = gaffer.Gaffer(gaffer_url)
+g.use_cert()
+
+
+############################################################################
+# Fetch matches edges and blacklist elements.
+############################################################################
+
+hash = lambda x: hashlib.md5(x).hexdigest()
+
+def make_sbl(x):
+    a = x.split(".")
+    if a[0] == "vt":
+        return "vt." + a[1][0:2]
+    return x
+
+matches = pickle.load(open("cache.MATCH", "rb"))
+blacklist = pickle.load(open("cache.BLACKLIST", "rb"))
+
+# Going to hash the blacklist names because there are many of them, so
+# collapse names by 
+sbls=[make_sbl(v) for v in blacklist]
+sbls=sorted(set(sbls))
+
+sbls_ix={sbls[i]: i for i in range(0, len(sbls))}
+
+
+############################################################################
+# Fetch device -> IP -> IP edges
+############################################################################
+
+op = gaffer.OperationChain([
+    gaffer.GetAllElements(entities=[
+        gaffer.ViewGroup("device", exclude=["count", "time"])
+    ], edges=None),
+    gaffer.GetWalks(
+        operations=[
+            gaffer.OperationChain(operations=[
+                gaffer.GetElements(edges=[
+                    gaffer.ViewGroup("hasip", exclude=["count", "time"])
+                ], entities=None, include="OUTGOING")
+            ]), 
+            gaffer.OperationChain(operations=[
+                gaffer.GetElements(edges=[
+                    gaffer.ViewGroup("ipflow")
+                ], entities=None, include="OUTGOING")
+            ])
+        ],
+        limit=10000000)
+])
+
+query = op.encode()
+
+url = "/rest/v2/graph/operations/execute/chunked"
+
+res = g.execute_chunked(op)
+
+############################################################################
+# Process graph output, construct a map of
+#   (device, ip) -> {timestamp set}
+############################################################################
+
+timestamps = {}
+counts = {}
+
+for v in res:
+
+    try:
+        ent = json.loads(v)
+
+    except Exception:
+        continue
+
+    dev = list(ent["entities"][0].keys())[0]
+    ip = list(ent["entities"][2].keys())[0]
+    k = (dev, ip)
+
+    if not k in counts:
+        counts[k] = 0
+        timestamps[k] = set()
+
+    ts = ent["edges"][1][0]["properties"]["time"]["uk.gov.gchq.gaffer.time.RBMBackedTimestampSet"]["timestamps"]
+    cnt = ent["edges"][1][0]["properties"]["count"]
+
+    counts[k] += cnt
+    timestamps[k].update(ts)
+
+############################################################################
+# Work out the earliest and latest timestamps.
+############################################################################
+
+smallest=None
+largest=None
+for v in timestamps:
+
+    if smallest == None:
+        smallest = min(timestamps[v])
+    else:
+        smallest = min(smallest, min(timestamps[v]))
+
+    if largest == None:
+        largest = max(timestamps[v])
+    else:
+        largest = max(largest, max(timestamps[v]))
+
+print(smallest, largest)
+
+############################################################################
+# Construct IP vector:
+#   device, ip, earliest timestamp, latest, largest gap, blacklists...
+############################################################################
+
+# Takes a timestamp set and returns the largest distance between two adjacent
+# elements.
+
+def gap(s):
+    last = min(s)
+    gap = 0
+    for v in sorted(s):
+        gap = max(gap, v - last)
+        last = v
+    return gap
+
+datas = []
+
+for v in counts:
+
+    dev, ip = v
+    tss = timestamps[v]
+    cnt = counts[v]
+    tss2 = tss.union(set([smallest, largest]))
+    biggest_gap = gap(tss2)
+
+    data = [dev, ip, min(tss), max(tss), biggest_gap, cnt]
+    
+    blacks = [0.0 for i in range(0, len(sbls))]
+        
+    if ip in matches:
+
+        for v2 in matches[ip]:
+            
+            bl = v2["blacklist"]
+            sbl = make_sbl(bl)
+            thing_latest = v2["latest"]
+            source = blacklist[bl]["source"]
+            blocklist_latest = blacklist[bl]["latest"]
+            prob = blacklist[bl]["probability"]
+
+            blocklist_decay_period = 86400 * 360
+            blocklist_age = time.time() - blocklist_latest
+            blocklist_factor = blocklist_decay_period - blocklist_age
+            blocklist_factor /= blocklist_decay_period
+            if blocklist_factor < 0: blocklist_factor = 0
+
+            thing_decay_period = 86400 * 28
+            thing_age = time.time() - thing_latest
+            thing_factor = thing_decay_period - thing_age
+            thing_factor /= thing_decay_period
+            if thing_factor < 0: thing_factor = 0
+            
+            prob = prob * thing_factor * blocklist_factor
+
+            prob = 1.0 - ((1.0 - blacks[sbls_ix[sbl]]) * (1.0 - prob))
+            blacks[sbls_ix[sbl]] = prob
+
+    data = data + blacks
+    datas.append(data)
+
+cols = ["device", "ip", "first", "last", "gap", "count"] + sbls
+df = pd.DataFrame(datas, columns=cols)
+
+df = df.set_index(["device", "ip"])
+
+# print df
+pickle.dump(df, open("vector.IPS", "wb"))
+
