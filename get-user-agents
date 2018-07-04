@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Displays ...
 
@@ -8,7 +8,6 @@
 import requests
 import json
 import sys
-import sets
 from gaffer import Gaffer
 
 query = {
@@ -36,11 +35,11 @@ res = g.post(url, data=json.dumps(query))
 
 obj = res.json()
 
-ua=sets.Set()
+ua=set()
 
 for o in obj:
     ua.add(o["destination"])
 
 for v in ua:
-    print v
+    print(v)
 

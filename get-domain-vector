@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Displays ...
 
@@ -32,8 +32,8 @@ def make_sbl(x):
         return "vt." + a[1][0:2]
     return x
 
-matches = pickle.load(open("cache.MATCH"))
-blacklist = pickle.load(open("cache.BLACKLIST"))
+matches = pickle.load(open("cache.MATCH", "rb"))
+blacklist = pickle.load(open("cache.BLACKLIST", "rb"))
 
 # Going to hash the blacklist names because there are many of them, so
 # collapse names by 
@@ -91,14 +91,14 @@ for v in res:
     try:
         ent = json.loads(v)
 
-    except Exception, e:
+    except Exception:
         continue
 
-    dev = ent["entities"][0].keys()[0]
-    domain = ent["entities"][3].keys()[0]
+    dev = list(ent["entities"][0].keys())[0]
+    domain = list(ent["entities"][3].keys())[0]
     k = (dev, domain)
 
-    if not counts.has_key(k):
+    if not k in counts:
         counts[k] = 0
         timestamps[k] = set()
 
@@ -126,8 +126,7 @@ for v in timestamps:
     else:
         largest = max(largest, max(timestamps[v]))
 
-print smallest
-print largest
+print(smallest, largest)
 
 ############################################################################
 # Construct domain vector:
@@ -159,7 +158,7 @@ for v in counts:
     
     blacks = [0.0 for i in range(0, len(sbls))]
         
-    if matches.has_key(domain):
+    if domain in matches:
 
         for v2 in matches[domain]:
             
@@ -196,5 +195,5 @@ df = pd.DataFrame(datas, columns=cols)
 df = df.set_index(["device", "domain"])
 
 # print df
-pickle.dump(df, open("vector.DOMAINS", "w"))
+pickle.dump(df, open("vector.DOMAINS", "wb"))
 

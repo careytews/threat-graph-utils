@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 ############################################################################
 # Fetch blacklist elements.
@@ -36,5 +36,5 @@ for v in r:
 
 r.close()
 
-pickle.dump(blacklist, open("cache.BLACKLIST", "w"))
+pickle.dump(blacklist, open("cache.BLACKLIST", "wb"))
 

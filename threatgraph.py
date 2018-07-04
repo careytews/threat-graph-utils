@@ -1,6 +1,5 @@
 
 import gaffer
-import sets
 import ipaddress
 import time
 
@@ -13,7 +12,7 @@ class Gaffer(gaffer.Gaffer):
     def get_all_ips(self):
         op = gaffer.GetAllElements(entities=["ip"], edges=None)
         res = self.execute(op)
-        ips = sets.Set([v["vertex"] for v in res])
+        ips = set([v["vertex"] for v in res])
 
         return ips
 
@@ -21,7 +20,7 @@ class Gaffer(gaffer.Gaffer):
 
         op = gaffer.GetAllElements(entities=["domain"], edges=None)
         res = self.execute(op)
-        domains = sets.Set([v["vertex"] for v in res])
+        domains = set([v["vertex"] for v in res])
 
         return domains
 
@@ -74,7 +73,7 @@ class Gaffer(gaffer.Gaffer):
 
         res = self.execute(query)
 
-        seen_ips = sets.Set([v["entities"][0].keys()[0] for v in res])
+        seen_ips = set([list(v["entities"][0].keys())[0] for v in res])
 
         return seen_ips
 
@@ -127,14 +126,14 @@ class Gaffer(gaffer.Gaffer):
 
         res = self.execute(query)
 
-        seen_domains = sets.Set([v["entities"][0].keys()[0] for v in res])
+        seen_domains = set([list(v["entities"][0].keys())[0] for v in res])
 
         return seen_domains
 
     def remove_private_ips(self, ips):
 
         # Remove private addresses
-        private = sets.Set()
+        private = set()
         for v in ips:
             if ipaddress.ip_address(v).is_private:
                 private.add(v)

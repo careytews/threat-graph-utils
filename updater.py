@@ -32,7 +32,7 @@ class Updater:
         # Iterate over domains
         for thing in things:
 
-            print thing
+            print(thing)
     
             elts = self.reporter(self, thing)
 
@@ -43,7 +43,7 @@ class Updater:
 
             # If status code is bad, fail
             if response.status_code != 200:
-                print response.text
+                print(response.text)
 
             time.sleep(self.sleep_time)
 
@@ -107,11 +107,11 @@ class FacebookUpdater(Updater):
                     ok = False
 
             if ok == False:
-                print "Ignoring blacklist, marked NOT HELPFUL"
+                print("Ignoring blacklist, marked NOT HELPFUL")
                 continue
 
             if threat["review_status"] == "UNREVIEWED":
-                print "Ignore unreviewed threat"
+                print("Ignore unreviewed threat")
                 continue
 
             # Blacklist
@@ -123,9 +123,9 @@ class FacebookUpdater(Updater):
                                          status=status, severity=severity)
             elts.append(elt)
 
-            print "  Blacklist = ", bl
-            print "  Probability = ", prob
-            print "  Description = ", desc
+            print("  Blacklist = ", bl)
+            print("  Probability = ", prob)
+            print("  Description = ", desc)
 
             # Create a blacklist entity (probably exists already)
             elt = self.g.make_blacklist_entity(bl, prob, self.tp, self.src,
@@ -218,9 +218,9 @@ class VirusTotalUpdater(Updater):
                                          time=tm)
             elts.append(elt)
 
-            print "  Blacklist = ", bl
-            print "  Probability = ", prob
-            print "  Description = ", desc
+            print("  Blacklist = ", bl)
+            print("  Probability = ", prob)
+            print("  Description = ", desc)
 
             # Create a blacklist entity (probably exists already)
             elt = self.g.make_blacklist_entity(bl, prob, self.tp, self.src,
@@ -329,8 +329,8 @@ class ApilityUpdater(Updater):
                 elt = self.g.make_match_edge(thing, blacklist)
                 elts.append(elt)
 
-                print "  Blacklist = ", bl
-                print "  Probability = ", prob
+                print("  Blacklist = ", bl)
+                print("  Probability = ", prob)
 
                 # Create a blacklist entity (probably exists already)
                 elt = self.g.make_blacklist_entity(blacklist, prob, self.tp,
@@ -361,12 +361,12 @@ class ApilityUpdater(Updater):
         def chunks(l, n):
             l = list(l)
             n = max(1, n)
-            return (l[i:i+n] for i in xrange(0, len(l), n))
+            return (l[i:i+n] for i in range(0, len(l), n))
         
         # Iterate over domains
         for chunk in chunks(things, self.chunk_size):
 
-            print chunk
+            print(chunk)
     
             elts = self.reporter(self, chunk)
 
@@ -377,7 +377,7 @@ class ApilityUpdater(Updater):
 
             # If status code is bad, fail
             if response.status_code != 200:
-                print response.text
+                print(response.text)
 
             time.sleep(self.sleep_time)
 

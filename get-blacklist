@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Displays ...
 
@@ -35,5 +35,5 @@ res = g.post(url, data=json.dumps(query))
 
 obj = res.json()
 
-print json.dumps(obj, indent=4)
-    
+print(json.dumps(obj, indent=4))
+

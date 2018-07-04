@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import json
 import gaffer
@@ -16,5 +16,5 @@ for v in r:
         o = json.loads(v)
     except:
         pass
-    print o["vertex"]
+    print(o["vertex"])
 

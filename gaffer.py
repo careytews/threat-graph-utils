@@ -43,11 +43,11 @@ class GetAllElements:
     def encode_group(self, g):
         if type(g) == str:
             return {g: {}}
-        if type(g) == unicode:
-            return {g: {}}
+#         if type(g) == unicode:
+#             return {g: {}}
         if isinstance(g, ViewGroup):
             return g.encode()
-        raise TypeError, "Needs to be string, unicode or GroupView"
+        raise TypeError("Needs to be string, unicode or GroupView")
         
     def encode(self):
         op = {
@@ -84,11 +84,11 @@ class GetElements:
     def encode_group(self, g):
         if type(g) == str:
             return {g: {}}
-        if type(g) == unicode:
-            return {g: {}}
+#         if type(g) == unicode:
+#             return {g: {}}
         if isinstance(g, ViewGroup):
             return g.encode()
-        raise TypeError, "Needs to be string, unicode or GroupView"
+        raise TypeError("Needs to be string, unicode or GroupView")
     
     def encode(self):
         op = {

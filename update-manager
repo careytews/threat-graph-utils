@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import sys
 import updater
@@ -6,49 +6,49 @@ import time
 
 while True:
 
-    print "Update..."
+    print("Update...")
 
-    print "Apility IPs..."
+    print("Apility IPs...")
     try:
         u = updater.ApilityUpdater.ip_updater()
         u.update()
-    except Exception, e:
-        print e
+    except Exception as e:
+        print(e)
 
-    print "Apility domains..."
+    print("Apility domains...")
     try:
         u = updater.ApilityUpdater.domain_updater()
         u.update()
-    except Exception, e:
-        print e
+    except Exception as e:
+        print(e)
 
-    print "VT IPs..."
+    print("VT IPs...")
     try:
         u = updater.VirusTotalUpdater.ip_updater()
         u.update()
-    except Exception, e:
-        print e
+    except Exception as e:
+        print(e)
 
-    print "VT domains..."
+    print("VT domains...")
     try:
         u = updater.VirusTotalUpdater.domain_updater()
         u.update()
-    except Exception, e:
-        print e
+    except Exception as e:
+        print(e)
 
-    print "FB IPs..."
+    print("FB IPs...")
     try:
         u = updater.FacebookUpdater.ip_updater()
         u.update()
-    except Exception, e:
-        print e
+    except Exception as e:
+        print(e)
 
-    print "FB domains..."
+    print("FB domains...")
     try:
         u = updater.FacebookUpdater.domain_updater()
         u.update()
-    except Exception, e:
-        print e
+    except Exception as e:
+        print(e)
 
     time.sleep(120)
 

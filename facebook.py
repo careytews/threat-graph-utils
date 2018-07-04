@@ -23,7 +23,7 @@ class Facebook:
 
     def get_ip_report(self, ip):
         
-        query_params = urllib.urlencode({
+        query_params = urllib.parse.urlencode({
             'access_token': self.id + '|' + self.secret,
             'type': "IP_ADDRESS",
             'text': ip,
@@ -35,14 +35,14 @@ class Facebook:
         r = requests.get(url)
         
         if r.status_code != 200:
-            print "ERROR"
+            print("ERROR")
             raise ApiError(r.text)
 
         return r.json()
 
     def get_domain_report(self, domain):
         
-        query_params = urllib.urlencode({
+        query_params = urllib.parse.urlencode({
             'access_token': self.id + '|' + self.secret,
             'type': "DOMAIN",
             'text': domain,
@@ -54,7 +54,7 @@ class Facebook:
         r = requests.get(url)
         
         if r.status_code != 200:
-            print "ERROR"
+            print("ERROR")
             raise ApiError(r.text)
 
         return r.json()
@@ -92,7 +92,7 @@ class Facebook:
 
         id = threat["id"]
 
-        if threat.has_key("description"):
+        if "description" in threat:
             desc = threat["description"]
         else:
             desc = ""
